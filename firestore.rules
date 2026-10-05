@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // এডমিনের রোলের জন্য ইউজার ডক চেক করা
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+
+    function isSeller() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SELLER';
+    }
+
+    function isSubAgent() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUB_AGENT';
+    }
+
+    // USERS: শুধু নিজের প্রোফাইল বা অ্যাডমিন
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // PRODUCTS: সবাই পড়তে পারবে, কিন্তু সেলার শুধু নিজেরটা আপডেট করবে
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isSeller() || isAdmin();
+      allow update: if isAdmin() || (isSeller() && request.resource.data.sellerId == request.auth.uid);
+      allow delete: if isAdmin() || (isSeller() && resource.data.sellerId == request.auth.uid);
+    }
+
+    // ORDERS: কাস্টমার শুধু নিজের অর্ডার, সেলার শুধু নিজের আইটেম, সাব-এজেন্ট সব
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin() || isSubAgent() || isSeller());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || isSubAgent();
+    }
+
+    // LEADS & OTHERS: শুধু অ্যাডমিন/সাব-এজেন্ট
+    match /leads/{leadId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin() || isSubAgent();
+    }
+
+    match /seller_deposits/{depositId} {
+      allow read: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
+      allow create: if isSeller() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+  }
+}
