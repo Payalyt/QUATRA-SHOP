@@ -59,12 +59,14 @@ export function getFriendlyErrorMessage(errorCode: string, lang: 'bn' | 'en' = '
 // 2. Automatically save and sync user profile to Firestore 'users' collection
 export async function saveUserProfileToFirestore(user: FirebaseUser, additionalData: {
   name?: string;
+  email?: string;
   phone?: string;
   role?: Role;
   shopName?: string;
   shopAddress?: string;
   customerId?: string;
   sellerIdNumber?: string;
+  avatarUrl?: string;
 } = {}) {
   try {
     const userRef = doc(db, 'users', user.uid);
