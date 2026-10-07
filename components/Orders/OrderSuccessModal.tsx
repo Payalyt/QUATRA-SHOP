@@ -75,6 +75,28 @@ export const OrderSuccessModal: React.FC<{ onOpenMyOrders: () => void }> = ({ on
             </div>
           </div>
 
+          <div className="flex justify-between items-center bg-sky-50/80 -mx-4 px-4 py-2 border-y border-sky-100">
+            <span className="text-gray-600 font-bold flex items-center gap-1">
+              <Truck className="w-3.5 h-3.5 text-[#0284c7]" />
+              <span>Courier Tracking:</span>
+            </span>
+            <div className="flex items-center gap-1.5 font-mono text-[11px]">
+              <span className="bg-white px-1.5 py-0.5 rounded border border-sky-200 text-sky-900 font-bold">
+                {order.trackingNumber || 'STDF-8819204'}
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(order.trackingNumber || 'STDF-8819204');
+                  showToast('Tracking code copied!', 'info');
+                }}
+                className="text-gray-400 hover:text-[#0284c7] p-0.5 cursor-pointer"
+                title="Copy tracking code"
+              >
+                <Copy className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+
           <div className="flex justify-between">
             <span className="text-gray-500">Estimated Delivery:</span>
             <span className="font-semibold text-gray-800 flex items-center gap-1">

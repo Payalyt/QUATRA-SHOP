@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useMarketplace } from '@/lib/store/marketplace-store';
 import { useIsMounted } from '@/hooks/use-is-mounted';
 import { BrandLogo } from '@/components/Common/BrandLogo';
@@ -29,7 +30,8 @@ import {
   Truck,
   MessageCircle,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Coins
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -299,23 +301,23 @@ export const Header: React.FC<{
 
             <button
               onClick={() => setIsCartOpen(true)}
-              className="flex items-center gap-2 p-2 hover:bg-sky-50 rounded-lg group transition-colors cursor-pointer"
+              className="flex items-center gap-2 p-2 hover:bg-orange-50 rounded-lg group transition-colors cursor-pointer border border-transparent hover:border-orange-200"
               title={t('cart')}
             >
               <div className="relative">
-                <ShoppingCart className="w-6 h-6 text-gray-800 group-hover:text-[#0284c7] transition-colors" />
+                <ShoppingCart className="w-6 h-6 text-[#f85606] group-hover:scale-105 transition-all" />
                 {mounted && cartCount > 0 ? (
                   <span
                     suppressHydrationWarning
-                    className="absolute -top-1.5 -right-2 bg-[#0284c7] text-white text-[11px] font-bold px-1.5 py-0.2 rounded-full ring-2 ring-white pointer-events-none"
+                    className="absolute -top-1.5 -right-2 bg-[#f85606] text-white text-[11px] font-black px-1.5 py-0.2 rounded-full ring-2 ring-white shadow-xs pointer-events-none"
                   >
                     {cartCount}
                   </span>
                 ) : null}
               </div>
               <div className="hidden sm:flex flex-col text-left leading-tight">
-                <span className="text-[11px] text-gray-400 font-medium">{t('cart')}</span>
-                <span suppressHydrationWarning className="text-[12px] font-bold text-gray-800 tabular-nums">
+                <span className="text-[11px] text-[#f85606] font-bold">{t('cart')}</span>
+                <span suppressHydrationWarning className="text-[12px] font-black text-gray-900 tabular-nums">
                   {mounted ? cartCount : 0} {t('items')}
                 </span>
               </div>
@@ -375,14 +377,14 @@ export const Header: React.FC<{
         </div>
 
         {/* Mobile & Tablet View Header - Stacked layout to prevent overflows */}
-        <div className="flex lg:hidden flex-col gap-2 px-3 py-2 w-full max-w-[1240px] mx-auto">
+        <div className="flex lg:hidden flex-col gap-1.5 px-2 py-2 w-full">
           {/* Mobile Row 1: Hamburg Menu, Logo, Actions */}
-          <div className="flex items-center justify-between w-full">
+          <div className="flex items-center justify-between gap-1.5 w-full">
             {/* Hamburger Side Menu Trigger & Logo */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 min-w-0 flex-1">
               <button
                 onClick={() => setIsMenuOpen(true)}
-                className="p-2 bg-[#0284c7] hover:bg-[#0369a1] text-white rounded-xl shadow-xs transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                className="p-1.5 bg-[#0284c7] hover:bg-[#0369a1] text-white rounded-lg shadow-xs transition-all active:scale-95 flex items-center justify-center cursor-pointer shrink-0"
                 title="Toggle Navigation Menu"
               >
                 <Menu className="w-5 h-5 stroke-[2.5]" />
@@ -395,83 +397,85 @@ export const Header: React.FC<{
                   setIsAdminView(false);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex items-center gap-1.5 text-left"
+                className="flex items-center gap-1 text-left min-w-0 overflow-hidden shrink"
                 title="QUATRO - Home"
               >
                 <BrandLogo variant="full" size="sm" />
               </button>
             </div>
 
-            {/* Mobile Actions: Direct Login/Signup or User display, Wishlist, Cart */}
-            <div className="flex items-center gap-1.5">
-              {/* Direct Login or User display on Mobile */}
-              {!user ? (
-                <div className="flex items-center gap-1">
+            {/* Mobile Actions: Login/Signup, User display, Wishlist, Cart */}
+            <div className="flex items-center gap-1 shrink-0">
+              {mounted && (
+                <>
+                  {!user ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setAuthModalTab('login');
+                          setIsAuthModalOpen(true);
+                        }}
+                        className="flex items-center gap-0.5 px-1.5 py-1 rounded-md bg-[#0284c7] hover:bg-[#0369a1] text-white text-[10px] font-bold shadow-2xs transition-all cursor-pointer"
+                      >
+                        <UserIcon className="w-3 h-3" />
+                        <span>{t('login')}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAuthModalTab('signup');
+                          setIsAuthModalOpen(true);
+                        }}
+                        className="flex items-center gap-0.5 px-1.5 py-1 rounded-md bg-sky-50 hover:bg-sky-100 text-[#0284c7] border border-[#0284c7] text-[10px] font-bold transition-all cursor-pointer"
+                      >
+                        <span>{t('signup')}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsProfileModalOpen(true)}
+                      className="flex items-center gap-1 px-1.5 py-1 rounded-md bg-sky-50 hover:bg-sky-100/80 border border-sky-200 text-gray-900 text-[10px] font-bold transition-all cursor-pointer"
+                      title={user.name}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-[#0284c7] text-white flex items-center justify-center text-[8px] font-black shrink-0 overflow-hidden border border-sky-200">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span>{user.name.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span className="max-w-[60px] truncate font-extrabold text-[#0284c7]">{user.name}</span>
+                    </button>
+                  )}
+
+                  {/* Wishlist */}
                   <button
-                    onClick={() => {
-                      setAuthModalTab('login');
-                      setIsAuthModalOpen(true);
-                    }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#0284c7] hover:bg-[#0369a1] text-white text-[11px] font-bold shadow-2xs transition-all cursor-pointer"
+                    onClick={onOpenWishlist}
+                    className="relative p-2 text-gray-700 hover:text-[#0284c7] transition-colors rounded-lg hover:bg-sky-50"
+                    title="Wishlist"
                   >
-                    <UserIcon className="w-3.5 h-3.5" />
-                    <span>{t('login')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setAuthModalTab('signup');
-                      setIsAuthModalOpen(true);
-                    }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-[#0284c7] border border-[#0284c7] text-[11px] font-bold transition-all cursor-pointer"
-                  >
-                    <span>{t('signup')}</span>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setIsProfileModalOpen(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100/80 border border-sky-200 text-gray-900 text-[11px] font-bold transition-all cursor-pointer"
-                  title={user.name}
-                >
-                  <div className="w-5 h-5 rounded-full bg-[#0284c7] text-white flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden border border-sky-200">
-                    {user.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      <span>{user.name.charAt(0).toUpperCase()}</span>
+                    <Heart className="w-5 h-5" />
+                    {wishlist.length > 0 && (
+                      <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#0284c7] text-white text-[8px] font-bold flex items-center justify-center pointer-events-none">
+                        {wishlist.length}
+                      </span>
                     )}
-                  </div>
-                  <span className="max-w-[80px] truncate font-extrabold text-[#0284c7]">{user.name}</span>
-                </button>
+                  </button>
+
+                  {/* Cart */}
+                  <button
+                    onClick={() => setIsCartOpen(true)}
+                    className="relative p-2 text-[#f85606] hover:bg-orange-50 transition-colors rounded-lg cursor-pointer"
+                    title="Cart"
+                  >
+                    <ShoppingCart className="w-5 h-5 text-[#f85606]" />
+                    {cartCount > 0 && (
+                      <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#f85606] text-white text-[8px] font-black flex items-center justify-center pointer-events-none shadow-xs">
+                        {cartCount}
+                      </span>
+                    )}
+                  </button>
+                </>
               )}
-
-              {/* Wishlist */}
-              <button
-                onClick={onOpenWishlist}
-                className="relative p-2 text-gray-700 hover:text-[#0284c7] transition-colors rounded-lg hover:bg-sky-50"
-                title="Wishlist"
-              >
-                <Heart className="w-5 h-5" />
-                {mounted && wishlist.length > 0 ? (
-                  <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#0284c7] text-white text-[8px] font-bold flex items-center justify-center pointer-events-none">
-                    {wishlist.length}
-                  </span>
-                ) : null}
-              </button>
-
-              {/* Cart */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className="relative p-2 text-gray-700 hover:text-[#0284c7] transition-colors rounded-lg hover:bg-sky-50"
-                title="Cart"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {mounted && cartCount > 0 ? (
-                  <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#0284c7] text-white text-[8px] font-bold flex items-center justify-center pointer-events-none">
-                    {cartCount}
-                  </span>
-                ) : null}
-              </button>
             </div>
           </div>
 
@@ -522,7 +526,6 @@ export const Header: React.FC<{
                           }`}
                         >
                           <div className="w-8 h-8 rounded bg-gray-100 shrink-0 overflow-hidden border border-gray-100">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={item.media[0]?.url}
                               alt={item.title}
@@ -701,6 +704,21 @@ export const Header: React.FC<{
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                 </button>
+
+                {/* Affiliate Partner Program Mobile Entry */}
+                <Link
+                  href="/affiliate"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between border transition-all active:scale-97 cursor-pointer bg-orange-50/90 text-[#f85606] border-orange-200 shadow-2xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-[#f85606] text-white flex items-center justify-center shadow-2xs">
+                      <Coins className="w-3.5 h-3.5" />
+                    </div>
+                    <span>{language === 'bn' ? 'অ্যাফিলিয়েট আর্নিং (১০%)' : 'Earn Money / Affiliate (10%)'}</span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-orange-400" />
+                </Link>
               </div>
 
               {/* Shopping Categories List */}

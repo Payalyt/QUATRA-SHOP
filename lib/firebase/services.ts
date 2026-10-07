@@ -78,7 +78,7 @@ export async function fetchAllUsersFromFirestore(roleFilter?: 'CUSTOMER' | 'SELL
     const snapshot = await getDocs(q);
     const usersList: UnifiedUserData[] = [];
     snapshot.forEach((doc) => {
-      usersList.push({ id: doc.id, ...doc.data() } as UnifiedUserData);
+      usersList.push({ ...doc.data(), id: doc.id } as UnifiedUserData);
     });
     return usersList;
   } catch (error) {
@@ -90,7 +90,7 @@ export async function fetchAllUsersFromFirestore(roleFilter?: 'CUSTOMER' | 'SELL
       snapshot.forEach((doc) => {
         const data = doc.data() as UnifiedUserData;
         if (!roleFilter || roleFilter === 'ALL' || data.role === roleFilter) {
-          fallbackList.push({ id: doc.id, ...data });
+          fallbackList.push({ ...data, id: doc.id });
         }
       });
       return fallbackList;
@@ -222,3 +222,182 @@ export async function saveCampaignToFirestore(campaign: SponsoredAdCampaign) {
     return { success: false, error };
   }
 }
+
+// ----------------- BANNERS & NOTICES -----------------
+export async function saveBannerToFirestore(banner: any) {
+  try {
+    const bannerRef = doc(db, 'banners', banner.id);
+    await setDoc(bannerRef, {
+      ...banner,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore saveBanner error:', error);
+    return { success: false, error };
+  }
+}
+
+export async function deleteBannerFromFirestore(bannerId: string) {
+  try {
+    await deleteDoc(doc(db, 'banners', bannerId));
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore deleteBanner error:', error);
+    return { success: false, error };
+  }
+}
+
+// ----------------- CATEGORIES -----------------
+export async function saveCategoryToFirestore(category: any) {
+  try {
+    const catRef = doc(db, 'categories', category.id);
+    await setDoc(catRef, {
+      ...category,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore saveCategory error:', error);
+    return { success: false, error };
+  }
+}
+
+export async function deleteCategoryFromFirestore(categoryId: string) {
+  try {
+    await deleteDoc(doc(db, 'categories', categoryId));
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore deleteCategory error:', error);
+    return { success: false, error };
+  }
+}
+
+// ----------------- SETTINGS & NOTICES -----------------
+export async function saveSettingsToFirestore(settings: any) {
+  try {
+    const setRef = doc(db, 'settings', 'general');
+    await setDoc(setRef, {
+      ...settings,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore saveSettings error:', error);
+    return { success: false, error };
+  }
+}
+
+// ----------------- COUPONS -----------------
+export async function saveCouponToFirestore(coupon: any) {
+  try {
+    const couponRef = doc(db, 'coupons', coupon.id);
+    await setDoc(couponRef, {
+      ...coupon,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore saveCoupon error:', error);
+    return { success: false, error };
+  }
+}
+
+export async function deleteCouponFromFirestore(couponId: string) {
+  try {
+    await deleteDoc(doc(db, 'coupons', couponId));
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore deleteCoupon error:', error);
+    return { success: false, error };
+  }
+}
+
+// ----------------- AFFILIATES -----------------
+export async function saveAffiliateToFirestore(affiliate: any) {
+  try {
+    const affRef = doc(db, 'affiliates', affiliate.id);
+    await setDoc(affRef, {
+      ...affiliate,
+      updatedAt: serverTimestamp(),
+      createdAt: affiliate.createdAt || new Date().toISOString()
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore saveAffiliate error:', error);
+    return { success: false, error };
+  }
+}
+
+export async function fetchAffiliatesFromFirestore(): Promise<any[]> {
+  try {
+    const snapshot = await getDocs(collection(db, 'affiliates'));
+    const list: any[] = [];
+    snapshot.forEach((doc) => {
+      list.push({ ...doc.data(), id: doc.id });
+    });
+    return list;
+  } catch (error) {
+    console.warn('Firestore fetchAffiliates error:', error);
+    return [];
+  }
+}
+
+export async function saveAffiliateWithdrawalToFirestore(withdrawal: any) {
+  try {
+    const wRef = doc(db, 'affiliate_withdrawals', withdrawal.id);
+    await setDoc(wRef, {
+      ...withdrawal,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore saveAffiliateWithdrawal error:', error);
+    return { success: false, error };
+  }
+}
+
+export async function saveAffiliateCommissionToFirestore(commission: any) {
+  try {
+    const cRef = doc(db, 'affiliate_commissions', commission.id);
+    await setDoc(cRef, {
+      ...commission,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore saveAffiliateCommission error:', error);
+    return { success: false, error };
+  }
+}
+
+// ----------------- SELLERS -----------------
+export async function saveSellerToFirestore(seller: any) {
+  try {
+    const sRef = doc(db, 'sellers', seller.id);
+    await setDoc(sRef, {
+      ...seller,
+      updatedAt: serverTimestamp(),
+      createdAt: seller.createdAt || new Date().toISOString()
+    }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.warn('Firestore saveSeller error:', error);
+    return { success: false, error };
+  }
+}
+
+export async function fetchSellersFromFirestore(): Promise<any[]> {
+  try {
+    const snapshot = await getDocs(collection(db, 'sellers'));
+    const list: any[] = [];
+    snapshot.forEach((doc) => {
+      list.push({ ...doc.data(), id: doc.id });
+    });
+    return list;
+  } catch (error) {
+    console.warn('Firestore fetchSellers error:', error);
+    return [];
+  }
+}
+

@@ -14,9 +14,12 @@ import {
   ShieldCheck,
   Package,
   Truck,
-  Copy
+  Copy,
+  Coins,
+  ExternalLink
 } from 'lucide-react';
 import { generateCustomerQAId, generateSellerQAId, cleanQAId } from '@/lib/utils/id-generator';
+import Link from 'next/link';
 
 export const UserProfileModal: React.FC<{ onOpenMyOrders?: () => void }> = ({ onOpenMyOrders }) => {
   const {
@@ -26,7 +29,10 @@ export const UserProfileModal: React.FC<{ onOpenMyOrders?: () => void }> = ({ on
     setIsProfileModalOpen,
     orders,
     setIsTrackOrderModalOpen,
-    showToast
+    showToast,
+    switchRole,
+    upgradeCustomerToAffiliate,
+    currentAffiliate
   } = useMarketplace();
 
   const [name, setName] = useState(user?.name || '');
@@ -192,31 +198,59 @@ export const UserProfileModal: React.FC<{ onOpenMyOrders?: () => void }> = ({ on
           )}
         </div>
 
-        {/* Quick Order Shortcuts */}
-        <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 border-b border-gray-100">
-          <button
-            type="button"
-            onClick={() => {
-              setIsProfileModalOpen(false);
-              if (onOpenMyOrders) onOpenMyOrders();
-            }}
-            className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-white border border-gray-200 hover:border-sky-300 hover:bg-sky-50/40 text-gray-800 font-bold text-xs transition-all shadow-2xs"
-          >
-            <Package className="w-4 h-4 text-[#0284c7]" />
-            <span>My Orders ({orders.length})</span>
-          </button>
+        {/* Quick Order Shortcuts & Seller Verification */}
+        <div className="p-4 bg-gray-50 border-b border-gray-100 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsProfileModalOpen(false);
+                if (onOpenMyOrders) onOpenMyOrders();
+              }}
+              className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-white border border-gray-200 hover:border-sky-300 hover:bg-sky-50/40 text-gray-800 font-bold text-xs transition-all shadow-2xs"
+            >
+              <Package className="w-4 h-4 text-[#0284c7]" />
+              <span>My Orders ({orders.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setIsProfileModalOpen(false);
-              setIsTrackOrderModalOpen(true);
-            }}
-            className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-white border border-gray-200 hover:border-sky-300 hover:bg-sky-50/40 text-[#0284c7] font-bold text-xs transition-all shadow-2xs"
-          >
-            <Truck className="w-4 h-4 text-[#0284c7]" />
-            <span>Track Order</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsProfileModalOpen(false);
+                setIsTrackOrderModalOpen(true);
+              }}
+              className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-white border border-gray-200 hover:border-sky-300 hover:bg-sky-50/40 text-[#0284c7] font-bold text-xs transition-all shadow-2xs"
+            >
+              <Truck className="w-4 h-4 text-[#0284c7]" />
+              <span>Track Order</span>
+            </button>
+          </div>
+
+          {/* Seller Verification Link Card */}
+          <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <span className="font-extrabold text-amber-950 block">
+                  {user.role === 'SELLER' ? '🪪 সেলার একাউন্ট ভেরিফিকেশন (NID Verification)' : '🏪 সেলার হিসেবে একাউন্ট ভেরিফাই করুন'}
+                </span>
+                <span className="text-[10px] text-amber-800 block">
+                  এনআইডি/পাসপোর্ট দিয়ে একাউন্ট ভেরিফাই করে প্রোডাক্ট আপলোড শুরু করুন
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsProfileModalOpen(false);
+                switchRole('SELLER');
+                showToast('সেলার প্যানেলে নিয়ে যাওয়া হচ্ছে...', 'info');
+              }}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] rounded-lg cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+            >
+              ভেরিফাই করুন ➔
+            </button>
+          </div>
         </div>
 
         {/* Profile Edit Form */}
@@ -339,6 +373,51 @@ export const UserProfileModal: React.FC<{ onOpenMyOrders?: () => void }> = ({ on
                   className="w-full p-2 rounded-lg border border-gray-200 focus:border-[#0284c7] outline-none font-medium"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Affiliate Partner Program Status & Upgrade */}
+          <div className="bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200 rounded-xl p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#f85606] text-white flex items-center justify-center font-bold shadow-2xs">
+                  <Coins className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-gray-900">
+                    {user?.role === 'AFFILIATE' || currentAffiliate
+                      ? `Active Affiliate Partner (${currentAffiliate?.code || 'AFF-ACTIVE'})`
+                      : 'Earn 10% as an Affiliate Partner'}
+                  </h4>
+                  <p className="text-[11px] text-gray-600">
+                    {user?.role === 'AFFILIATE' || currentAffiliate
+                      ? `Payout configured via ${currentAffiliate?.payoutMethod || 'bKash'} (${currentAffiliate?.payoutAccount || user?.phone})`
+                      : 'Share products with friends and earn 10% commission on every order.'}
+                  </p>
+                </div>
+              </div>
+
+              {user?.role === 'AFFILIATE' || currentAffiliate ? (
+                <Link
+                  href="/affiliate/dashboard"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="bg-[#f85606] hover:bg-orange-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg shadow-2xs transition-colors flex items-center gap-1 shrink-0"
+                >
+                  <span>Dashboard</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await upgradeCustomerToAffiliate('bKash', user.phone || '01712345678');
+                    setIsProfileModalOpen(false);
+                  }}
+                  className="bg-[#f85606] hover:bg-orange-700 text-white font-black text-[11px] px-3.5 py-1.5 rounded-lg shadow-2xs transition-all shrink-0 cursor-pointer"
+                >
+                  Upgrade Account
+                </button>
+              )}
             </div>
           </div>
 

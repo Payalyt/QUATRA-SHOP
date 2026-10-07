@@ -26,6 +26,11 @@ export const CartDrawer: React.FC = () => {
     applyVoucherCode,
     formatPrice,
     setIsCheckoutModalOpen,
+    user,
+    setIsAuthModalOpen,
+    setAuthModalTab,
+    showToast,
+    language,
     t
   } = useMarketplace();
 
@@ -46,6 +51,18 @@ export const CartDrawer: React.FC = () => {
   };
 
   const handleProceed = () => {
+    if (!user) {
+      setIsCartOpen(false);
+      setAuthModalTab('login');
+      setIsAuthModalOpen(true);
+      showToast(
+        language === 'bn'
+          ? 'চেকআউট করতে অনুগ্রহ করে প্রথমে অ্যাকাউন্টে লগইন বা সাইন-আপ করুন।'
+          : 'Please log in or sign up to proceed with checkout.',
+        'info'
+      );
+      return;
+    }
     setIsCartOpen(false);
     setIsCheckoutModalOpen(true);
   };
@@ -221,7 +238,7 @@ export const CartDrawer: React.FC = () => {
             {/* Checkout Action Button */}
             <button
               onClick={handleProceed}
-              className="w-full bg-[#0284c7] hover:bg-[#0369a1] text-white font-extrabold text-sm py-3 rounded-md shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              className="w-full bg-[#f85606] hover:bg-[#d94803] text-white font-extrabold text-sm py-3 rounded-md shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
               <span>{t('proceedCheckout')}</span>
               <ArrowRight className="w-4 h-4" />

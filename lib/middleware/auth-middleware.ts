@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebase/admin';
 
-export async function authorize(req: NextRequest, allowedRoles: ('ADMIN' | 'SUB_AGENT' | 'SELLER')[]) {
+export async function authorize(req: NextRequest, allowedRoles: ('ADMIN' | 'SUB_AGENT' | 'SELLER' | 'CUSTOMER')[]) {
   const token = req.headers.get('Authorization')?.split('Bearer ')[1];
   
   if (!token) {
     return { error: 'Unauthorized', status: 401 };
   }
 
+  const auth = adminAuth;
+  if (!auth) {
+    return { error: 'Authentication not configured', status: 500 };
+  }
+
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token);
     
     // ইন-মেমরি চেক বা Firestore থেকে রোল চেক করুন
     // এখানে আমরা ধরে নিচ্ছি ইউজার কাস্টম ক্লেইম বা ডাটায় রোল আছে

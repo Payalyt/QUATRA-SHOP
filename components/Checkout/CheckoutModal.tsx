@@ -38,17 +38,22 @@ export const CheckoutModal: React.FC = () => {
     showToast,
     settings,
     t,
+    language,
+    setIsAuthModalOpen,
+    setAuthModalTab,
     applyVoucherCode,
-    voucherCode
+    voucherCode,
+    collectedVouchers,
+    coupons
   } = useMarketplace();
 
-  // Address state
-  const [fullName, setFullName] = useState(user?.name || 'Rayhan Ahmed');
-  const [phone, setPhone] = useState(user?.phone || '01712345678');
-  const [division, setDivision] = useState('Dhaka');
+  // Address state - Clean empty initialization unless logged-in user profile exists
+  const [fullName, setFullName] = useState(user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [division, setDivision] = useState(user?.address ? 'Dhaka' : 'Dhaka');
   const [district, setDistrict] = useState('Dhaka City');
-  const [thanaCity, setThanaCity] = useState('Dhanmondi');
-  const [addressLine, setAddressLine] = useState('House 42, Road 9/A, Dhanmondi');
+  const [thanaCity, setThanaCity] = useState('');
+  const [addressLine, setAddressLine] = useState('');
 
   // Delivery & Payment
   const [deliveryType, setDeliveryType] = useState<'standard' | 'express'>('standard');
@@ -62,7 +67,15 @@ export const CheckoutModal: React.FC = () => {
   const [couponInput, setCouponInput] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{
+    fullName?: string;
+    phone?: string;
+    thanaCity?: string;
+    addressLine?: string;
+    senderNumber?: string;
+    transactionId?: string;
+    general?: string;
+  }>({});
   const [showBkashModal, setShowBkashModal] = useState(false);
   const [showNagadModal, setShowNagadModal] = useState(false);
 
@@ -97,50 +110,149 @@ export const CheckoutModal: React.FC = () => {
       number: '',
       instructions: settings.codInstructions || 'Cash on Delivery standard & 24h shipping. Pay remaining balance when package arrives.'
     }] : []),
-    ...gateways.filter(g => g.isActive).map(gw => ({
-      id: gw.id,
-      name: gw.name,
-      logo: gw.logoUrl || '',
-      type: gw.type,
-      number: gw.accountNumber,
-      instructions: gw.instructions || `Please Send Money to the official ${gw.name} number.`
-    }))
+    ...(settings.isOnlinePaymentEnabled !== false
+      ? gateways.filter(g => g.isActive).map(gw => ({
+          id: gw.id,
+          name: gw.name,
+          logo: gw.logoUrl || '',
+          type: gw.type,
+          number: gw.accountNumber,
+          instructions: gw.instructions || `Please Send Money to the official ${gw.name} number.`
+        }))
+      : [])
   ];
 
   const selectedOption = paymentOptions.find(o => o.id === paymentMethod);
 
+  const bdPhoneRegex = /^(?:\+?88)?01[3-9]\d{8}$/;
+
+  const validateAddressBeforePayment = (): boolean => {
+    const errs: typeof fieldErrors = {};
+
+    if (!cart || cart.length === 0) {
+      showToast('আপনার কার্ট খালি! অনুগ্রহ করে কোনো পণ্য কার্টে যোগ করুন।', 'error');
+      return false;
+    }
+
+    if (!fullName.trim() || fullName.trim().length < 2) {
+      errs.fullName = 'আপনার পূর্ণ নাম লেখা আবশ্যক (Full Name is required)';
+    }
+
+    const cleanPhone = phone.trim().replace(/[-+\s]/g, '');
+    if (!cleanPhone || !bdPhoneRegex.test(cleanPhone)) {
+      errs.phone = 'সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (e.g. 01712345678)';
+    }
+
+    if (!thanaCity.trim() || thanaCity.trim().length < 2) {
+      errs.thanaCity = 'থানা বা উপজেলা লেখা আবশ্যক (Thana is required)';
+    }
+
+    if (!addressLine.trim() || addressLine.trim().length < 4) {
+      errs.addressLine = 'বিস্তারিত ডেলিভারি ঠিকানা দিন (Address is required)';
+    }
+
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      showToast('অনুগ্রহ করে প্রয়োজনীয় লাল চিহ্নিত তথ্যগুলো সঠিকভাবে পূরণ করুন', 'error');
+      return false;
+    }
+    return true;
+  };
+
   const validateAndProceed = async () => {
-    if (!fullName.trim() || !phone.trim() || !addressLine.trim()) {
-      setError('Please fill in your name, phone number, and street address.');
+    if (!user) {
+      setIsCheckoutModalOpen(false);
+      setAuthModalTab('login');
+      setIsAuthModalOpen(true);
+      showToast(
+        language === 'bn'
+          ? 'অর্ডার সম্পন্ন করতে অনুগ্রহ করে প্রথমে অ্যাকাউন্টে লগইন বা সাইন-আপ করুন।'
+          : 'Please log in or sign up to complete your order.',
+        'info'
+      );
       return;
     }
 
-    if (paymentMethod !== 'COD' && (!transactionId.trim() || !senderNumber.trim())) {
-      setError(`Please enter your Sender Number and Transaction ID (TrxID) for your ${selectedOption?.name || 'payment'}.`);
+    if (!validateAddressBeforePayment()) {
       return;
     }
 
-    setError('');
+    const errs: typeof fieldErrors = {};
+
+    if (!paymentMethod) {
+      errs.general = 'অনুগ্রহ করে একটি পেমেন্ট পদ্ধতি নির্বাচন করুন।';
+      setFieldErrors(errs);
+      showToast('অনুগ্রহ করে একটি পেমেন্ট পদ্ধতি নির্বাচন করুন।', 'error');
+      return;
+    }
+
+    // Strict validation for non-COD payment options (bKash / Nagad / Rocket / Bank)
+    if (paymentMethod !== 'COD') {
+      const cleanSender = senderNumber.trim().replace(/[-+\s]/g, '');
+      if (!cleanSender || !bdPhoneRegex.test(cleanSender)) {
+        errs.senderNumber = 'সঠিক ১১ ডিজিটের সেন্ডার বিকাশ/নগদ নম্বর দিন';
+      }
+
+      if (!transactionId.trim() || transactionId.trim().length < 6) {
+        errs.transactionId = 'সঠিক ট্রানজেকশন আইডি (TrxID) লিখুন (কমপক্ষে ৬ সংখ্যার)';
+      }
+
+      if (Object.keys(errs).length > 0) {
+        setFieldErrors(errs);
+        showToast('পেমেন্টের সেন্ডার নম্বর ও ট্রানজেকশন আইডি (TrxID) দিন', 'error');
+        return;
+      }
+    }
+
+    setFieldErrors({});
 
     const address: ShippingAddress = {
-      fullName,
-      phone,
+      fullName: fullName.trim(),
+      phone: phone.trim(),
       division,
       district,
-      thanaCity,
-      addressLine
+      thanaCity: thanaCity.trim(),
+      addressLine: addressLine.trim()
     };
 
-    // Direct checkout
+    // Direct checkout with conditional live API Verification for bKash / Nagad
     setIsSubmitting(true);
     try {
+      if (paymentMethod !== 'COD' && settings.isMerchantVerifyEnabled === true) {
+        // Call Payment API to verify the TrxID with bKash Merchant API
+        const verifyRes = await fetch('/api/payment/gateway', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'verify_trx',
+            provider: paymentMethod,
+            trxID: transactionId.trim().toUpperCase(),
+            senderNumber: senderNumber.trim(),
+            amount: totalAmount
+          })
+        });
+
+        const verifyData = await verifyRes.json();
+
+        if (!verifyRes.ok || verifyData.statusCode !== '0000') {
+          setFieldErrors({ transactionId: verifyData.statusMessage || 'বিকাশ এপিআই থেকে ট্রানজেকশন যাচাই ব্যর্থ হয়েছে। সঠিক TrxID দিন।' });
+          showToast(verifyData.statusMessage || 'বিকাশ এপিআই থেকে ট্রানজেকশন যাচাই ব্যর্থ হয়েছে।', 'error');
+          setIsSubmitting(false);
+          return;
+        }
+
+        showToast(verifyData.statusMessage || 'বিকাশ এপিআই থেকে পেমেন্ট সফলভাবে ভেরিফাইড হয়েছে!', 'success');
+      }
+
       await placeOrder(
         address,
         paymentMethod,
         shippingFee,
-        paymentMethod === 'COD' ? 'COD-DELIVERY' : transactionId,
-        paymentMethod === 'COD' ? phone : senderNumber
+        paymentMethod === 'COD' ? 'COD-DELIVERY' : transactionId.trim().toUpperCase(),
+        paymentMethod === 'COD' ? phone.trim() : senderNumber.trim()
       );
+    } catch (err: any) {
+      showToast(err?.message || 'অর্ডার প্রসেস করতে ব্যর্থ হয়েছে। আবার চেষ্টা করুন।', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -170,14 +282,6 @@ export const CheckoutModal: React.FC = () => {
             </button>
           </div>
 
-          {/* Error Banner */}
-          {error && (
-            <div className="bg-red-50 border-b border-red-200 text-red-700 px-4 py-3 text-xs font-semibold flex items-start gap-2">
-              <span className="font-bold">⚠️ Error:</span>
-              <p>{error}</p>
-            </div>
-          )}
-
           {/* Form */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5 p-4 sm:p-5 overflow-y-auto">
             {/* Left 7 cols: Billing & Shipping Address / Payment Methods */}
@@ -191,37 +295,61 @@ export const CheckoutModal: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="font-semibold text-gray-700 block mb-1">Full Name *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">
+                      Full Name (আপনার নাম) *
+                    </label>
                     <div className="relative">
-                      <User className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <User className={`w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 ${fieldErrors.fullName ? 'text-red-500' : 'text-gray-400'}`} />
                       <input
                         type="text"
                         value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Rayhan Ahmed"
-                        className="w-full py-2 pl-8 pr-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none font-bold text-gray-800"
+                        onChange={(e) => {
+                          setFullName(e.target.value);
+                          if (fieldErrors.fullName) setFieldErrors((prev) => ({ ...prev, fullName: undefined }));
+                        }}
+                        placeholder="আপনার পূর্ণ নাম লিখুন"
+                        className={`w-full py-2 pl-8 pr-2.5 rounded border outline-none font-bold text-gray-800 transition-colors ${
+                          fieldErrors.fullName ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
+                        }`}
                         required
                       />
                     </div>
+                    {fieldErrors.fullName && (
+                      <p className="text-[11px] text-red-600 font-bold mt-1 flex items-center gap-1">
+                        <span>*</span> {fieldErrors.fullName}
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="font-semibold text-gray-700 block mb-1">Phone Number *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">
+                      Phone Number (মোবাইল নম্বর) *
+                    </label>
                     <div className="relative">
-                      <Phone className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <Phone className={`w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 ${fieldErrors.phone ? 'text-red-500' : 'text-gray-400'}`} />
                       <input
                         type="tel"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="01712345678"
-                        className="w-full py-2 pl-8 pr-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none font-bold text-gray-800"
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                        }}
+                        placeholder="017XXXXXXXX"
+                        className={`w-full py-2 pl-8 pr-2.5 rounded border outline-none font-bold text-gray-800 transition-colors ${
+                          fieldErrors.phone ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
+                        }`}
                         required
                       />
                     </div>
+                    {fieldErrors.phone && (
+                      <p className="text-[11px] text-red-600 font-bold mt-1 flex items-center gap-1">
+                        <span>*</span> {fieldErrors.phone}
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="font-semibold text-gray-700 block mb-1">Division *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">Division (বিভাগ) *</label>
                     <select
                       value={division}
                       onChange={(e) => handleDivisionChange(e.target.value)}
@@ -236,7 +364,7 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-semibold text-gray-700 block mb-1">District / City *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">District / City (জেলা) *</label>
                     <select
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
@@ -251,30 +379,50 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-semibold text-gray-700 block mb-1">Thana / Upazila / Area *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">Thana / Upazila (থানা / উপজেলা) *</label>
                     <input
                       type="text"
                       value={thanaCity}
-                      onChange={(e) => setThanaCity(e.target.value)}
-                      placeholder="Dhanmondi"
-                      className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none font-semibold text-gray-800"
+                      onChange={(e) => {
+                        setThanaCity(e.target.value);
+                        if (fieldErrors.thanaCity) setFieldErrors((prev) => ({ ...prev, thanaCity: undefined }));
+                      }}
+                      placeholder="থানা / উপজেলা লিখুন"
+                      className={`w-full p-2 rounded border outline-none font-semibold text-gray-800 transition-colors ${
+                        fieldErrors.thanaCity ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
+                      }`}
                       required
                     />
+                    {fieldErrors.thanaCity && (
+                      <p className="text-[11px] text-red-600 font-bold mt-1 flex items-center gap-1">
+                        <span>*</span> {fieldErrors.thanaCity}
+                      </p>
+                    )}
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="font-semibold text-gray-700 block mb-1">Detailed Street Address *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">Detailed Street Address (বিস্তারিত ঠিকানা) *</label>
                     <div className="relative">
-                      <Home className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-3" />
+                      <Home className={`w-3.5 h-3.5 absolute left-2.5 top-3 ${fieldErrors.addressLine ? 'text-red-500' : 'text-gray-400'}`} />
                       <textarea
                         rows={1}
                         value={addressLine}
-                        onChange={(e) => setAddressLine(e.target.value)}
-                        placeholder="House 42, Road 9/A, Dhanmondi"
-                        className="w-full py-2 pl-8 pr-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none resize-none font-semibold text-gray-800"
+                        onChange={(e) => {
+                          setAddressLine(e.target.value);
+                          if (fieldErrors.addressLine) setFieldErrors((prev) => ({ ...prev, addressLine: undefined }));
+                        }}
+                        placeholder="বাসা নং, রোড নং, এলাকা / গ্রাম"
+                        className={`w-full py-2 pl-8 pr-2.5 rounded border outline-none resize-none font-semibold text-gray-800 transition-colors ${
+                          fieldErrors.addressLine ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
+                        }`}
                         required
                       />
                     </div>
+                    {fieldErrors.addressLine && (
+                      <p className="text-[11px] text-red-600 font-bold mt-1 flex items-center gap-1">
+                        <span>*</span> {fieldErrors.addressLine}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -359,7 +507,7 @@ export const CheckoutModal: React.FC = () => {
                         type="button"
                         onClick={() => {
                           setPaymentMethod(opt.id);
-                          setError('');
+                          setFieldErrors((prev) => ({ ...prev, general: undefined }));
                         }}
                         className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer active:scale-97 ${
                           isSelected
@@ -376,12 +524,21 @@ export const CheckoutModal: React.FC = () => {
                             referrerPolicy="no-referrer"
                           />
                         ) : (
-                          <div className="flex items-center justify-center bg-sky-100/70 text-[#0284c7] rounded-md py-1 px-2 font-black text-[9px] uppercase tracking-wider">
-                            COD
+                          <div className={`flex items-center justify-center w-full h-7 rounded-lg shadow-2xs gap-1 px-1.5 transition-all ${
+                            isSelected
+                              ? 'bg-linear-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                              : 'bg-linear-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-200/80'
+                          }`}>
+                            <Truck className={`w-3.5 h-3.5 stroke-[2.5] ${isSelected ? 'text-white' : 'text-emerald-600'}`} />
+                            <span className="font-black text-[10px] uppercase tracking-wider">
+                              COD
+                            </span>
                           </div>
                         )}
-                        <span className="text-[8px] text-gray-500 font-black uppercase tracking-tighter leading-tight text-center px-1 truncate w-full">
-                          {opt.id === 'COD' ? 'COD' : opt.name}
+                        <span className={`text-[8.5px] font-extrabold tracking-tight leading-tight text-center px-0.5 truncate w-full ${
+                          isSelected ? 'text-[#0284c7]' : 'text-gray-700'
+                        }`}>
+                          {opt.id === 'COD' ? 'Cash On Delivery' : opt.name}
                         </span>
                       </button>
                     );
@@ -412,7 +569,7 @@ export const CheckoutModal: React.FC = () => {
                       /* Standard Gateway Send Money process block */
                       <div className="space-y-3.5">
                         {/* Instant Online Direct Gateway Trigger */}
-                        {(selectedOption.id.toLowerCase().includes('bkash') || selectedOption.id.toLowerCase().includes('nagad')) && (
+                        {settings.isAutoPaymentEnabled !== false && (selectedOption.id.toLowerCase().includes('bkash') || selectedOption.id.toLowerCase().includes('nagad')) && (
                           <div className="p-3.5 bg-linear-to-r from-sky-500/10 via-indigo-500/10 to-pink-500/10 rounded-xl border border-sky-200/80 space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1.5 font-black text-slate-900 text-xs">
@@ -429,6 +586,10 @@ export const CheckoutModal: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
+                                if (!validateAddressBeforePayment()) {
+                                  return;
+                                }
+                                setFieldErrors({});
                                 if (selectedOption.id.toLowerCase().includes('bkash')) {
                                   setShowBkashModal(true);
                                 } else {
@@ -479,10 +640,20 @@ export const CheckoutModal: React.FC = () => {
                             <input
                               type="text"
                               value={senderNumber}
-                              onChange={(e) => setSenderNumber(e.target.value)}
-                              placeholder="e.g. 017XXXXXXXX"
-                              className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-[#0284c7] bg-white outline-none font-bold text-gray-900"
+                              onChange={(e) => {
+                                setSenderNumber(e.target.value);
+                                if (fieldErrors.senderNumber) setFieldErrors((prev) => ({ ...prev, senderNumber: undefined }));
+                              }}
+                              placeholder="017XXXXXXXX"
+                              className={`w-full p-2.5 rounded-lg border bg-white outline-none font-bold text-gray-900 transition-colors ${
+                                fieldErrors.senderNumber ? 'border-red-500 bg-red-50/20 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
+                              }`}
                             />
+                            {fieldErrors.senderNumber && (
+                              <p className="text-[10px] text-red-600 font-bold mt-1">
+                                * {fieldErrors.senderNumber}
+                              </p>
+                            )}
                           </div>
                           <div>
                             <label className="font-extrabold text-gray-700 block mb-1">
@@ -491,10 +662,20 @@ export const CheckoutModal: React.FC = () => {
                             <input
                               type="text"
                               value={transactionId}
-                              onChange={(e) => setTransactionId(e.target.value)}
+                              onChange={(e) => {
+                                setTransactionId(e.target.value);
+                                if (fieldErrors.transactionId) setFieldErrors((prev) => ({ ...prev, transactionId: undefined }));
+                              }}
                               placeholder="e.g. 9J4K82LA"
-                              className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-[#0284c7] bg-white outline-none font-mono uppercase font-bold tracking-wider text-gray-900"
+                              className={`w-full p-2.5 rounded-lg border bg-white outline-none font-mono uppercase font-bold tracking-wider text-gray-900 transition-colors ${
+                                fieldErrors.transactionId ? 'border-red-500 bg-red-50/20 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
+                              }`}
                             />
+                            {fieldErrors.transactionId && (
+                              <p className="text-[10px] text-red-600 font-bold mt-1">
+                                * {fieldErrors.transactionId}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -569,6 +750,28 @@ export const CheckoutModal: React.FC = () => {
                   {voucherCode && (
                     <div className="text-[10px] text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-1.5 rounded-lg flex items-center justify-between">
                       <span>✓ Applied Coupon: &quot;{voucherCode}&quot;</span>
+                    </div>
+                  )}
+
+                  {/* 1-Tap Collected Vouchers Quick Apply */}
+                  {collectedVouchers && collectedVouchers.length > 0 && !voucherCode && (
+                    <div className="pt-1">
+                      <span className="text-[10px] text-gray-500 font-bold block mb-1">
+                        {language === 'bn' ? 'আপনার সংরক্ষিত ভাউচার (ক্লিক করে ব্যবহার করুন):' : 'Your Collected Vouchers:'}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {collectedVouchers.map((vCode) => (
+                          <button
+                            key={vCode}
+                            type="button"
+                            onClick={() => applyVoucherCode(vCode)}
+                            className="text-[10px] bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-2 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                          >
+                            <span>🎟️ {vCode}</span>
+                            <span className="text-[9px] bg-amber-500 text-white px-1 rounded">Apply</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

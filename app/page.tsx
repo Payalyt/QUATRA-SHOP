@@ -155,12 +155,12 @@ function MarketplaceApp() {
 
         <button
           onClick={() => setIsCartOpen(true)}
-          className="flex flex-col items-center justify-center flex-1 gap-1 text-[10px] font-bold text-gray-500 hover:text-[#0284c7] relative"
+          className="flex flex-col items-center justify-center flex-1 gap-1 text-[10px] font-bold text-gray-500 hover:text-[#f85606] relative"
         >
           <ShoppingCart className="w-5 h-5" />
           <span>Cart</span>
           {cartCount > 0 && (
-            <span className="absolute top-0 right-5 w-3.5 h-3.5 rounded-full bg-[#0284c7] text-white text-[8px] font-bold flex items-center justify-center">
+            <span className="absolute top-0 right-5 w-3.5 h-3.5 rounded-full bg-[#f85606] text-white text-[8px] font-bold flex items-center justify-center shadow-xs">
               {cartCount}
             </span>
           )}

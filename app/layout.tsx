@@ -1,6 +1,13 @@
-import type {Metadata} from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css'; // Global styles
 import { AppProvider } from '@/components/Providers/AppProvider';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#0284c7',
+};
 
 export const metadata: Metadata = {
   title: 'QUATRO - Bangladesh Online Shopping Marketplace',

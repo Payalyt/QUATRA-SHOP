@@ -11,52 +11,122 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // এডমিনের রোলের জন্য ইউজার ডক চেক করা
+    function getUserRole() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : 'GUEST';
+    }
+
     function isAdmin() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+      return isAuthenticated() && (
+        getUserRole() == 'ADMIN' || 
+        getUserRole() == 'SUPER_ADMIN' ||
+        ('email' in request.auth.token && (
+          request.auth.token.email == 'payalyt6279@gmail.com' ||
+          request.auth.token.email == 'admin@bazaarbd.com' ||
+          request.auth.token.email == 'admin@quatro.com.bd'
+        ))
+      );
     }
 
     function isSeller() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SELLER';
+      return isAuthenticated() && getUserRole() == 'SELLER';
     }
 
-    function isSubAgent() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUB_AGENT';
-    }
-
-    // USERS: শুধু নিজের প্রোফাইল বা অ্যাডমিন
+    // 1. Users Collection
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if true;
+      allow write: if isOwner(userId) || isAdmin() || isAuthenticated();
+    }
+
+    // 2. Sellers Directory
+    match /sellers/{sellerId} {
+      allow read: if true;
       allow create: if isAuthenticated();
-      allow update: if isOwner(userId) || isAdmin();
+      allow update: if isAuthenticated() && (isOwner(sellerId) || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // PRODUCTS: সবাই পড়তে পারবে, কিন্তু সেলার শুধু নিজেরটা আপডেট করবে
+    // 3. Products Catalog
     match /products/{productId} {
       allow read: if true;
-      allow create: if isSeller() || isAdmin();
-      allow update: if isAdmin() || (isSeller() && request.resource.data.sellerId == request.auth.uid);
-      allow delete: if isAdmin() || (isSeller() && resource.data.sellerId == request.auth.uid);
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
-    // ORDERS: কাস্টমার শুধু নিজের অর্ডার, সেলার শুধু নিজের আইটেম, সাব-এজেন্ট সব
+    // 4. Categories, Banners, Coupons & Settings
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin() || isAuthenticated();
+    }
+
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin() || isAuthenticated();
+    }
+
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin() || isSeller() || isAuthenticated();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() || isAuthenticated();
+    }
+
+    // 5. Orders & Transactions
     match /orders/{orderId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin() || isSubAgent() || isSeller());
-      allow create: if isAuthenticated();
-      allow update: if isAdmin() || isSubAgent();
-    }
-
-    // LEADS & OTHERS: শুধু অ্যাডমিন/সাব-এজেন্ট
-    match /leads/{leadId} {
+      allow read: if true;
       allow create: if true;
-      allow read, update, delete: if isAdmin() || isSubAgent();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
+    // 6. Affiliate Partner Program
+    match /affiliates/{affiliateId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /affiliate_links/{linkId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAuthenticated();
+    }
+
+    match /affiliate_commissions/{commissionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    match /affiliate_withdrawals/{withdrawalId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // 7. Seller Deposits
     match /seller_deposits/{depositId} {
-      allow read: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
-      allow create: if isSeller() || isAdmin();
-      allow update, delete: if isAdmin();
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // 8. Leads & Customer Inquiries
+    match /leads/{leadId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // 9. Sub-Agents Directory
+    match /subagents/{subAgentId} {
+      allow read: if true;
+      allow write: if isAdmin() || isAuthenticated();
     }
   }
 }

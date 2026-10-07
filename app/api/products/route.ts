@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { INITIAL_PRODUCTS } from '@/lib/data/seed-products';
+import { authorize } from '@/lib/middleware/auth-middleware';
+import { productSchema } from '@/lib/validations/product';
+import { adminDb } from '@/lib/firebase/admin';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -57,10 +60,6 @@ export async function GET(req: NextRequest) {
   });
 }
 
-import { NextRequest, NextResponse } from 'next/server';
-import { authorize } from '@/lib/middleware/auth-middleware';
-import { productSchema } from '@/lib/validations/product';
-import { adminDb } from '@/lib/firebase/admin';
 
 export async function POST(req: NextRequest) {
   // 1. Security Check: Only Sellers and Admin

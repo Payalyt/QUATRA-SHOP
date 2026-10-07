@@ -107,9 +107,9 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         </svg>
       </div>
 
-      {/* Wordmark Text (When variant is full) */}
+      {/* Wordmark Text (When variant is full) - Hide on mobile screens to give breathing room for login/signup */}
       {variant === 'full' && (
-        <div className="flex flex-col leading-none">
+        <div className="hidden sm:flex flex-col leading-none">
           <div className="flex items-center gap-1.5">
             <span
               className={`font-black font-sans uppercase ${textSizes[size]} ${

@@ -1,4 +1,4 @@
-export type Role = 'CUSTOMER' | 'ADMIN' | 'SELLER' | 'SUB_AGENT';
+export type Role = 'CUSTOMER' | 'ADMIN' | 'SELLER' | 'SUB_AGENT' | 'AFFILIATE';
 
 export type OrderStatus =
   | 'Pending'
@@ -69,6 +69,14 @@ export interface NagadApiConfig {
   environment?: 'sandbox' | 'live';
 }
 
+export interface SSLCommerzApiConfig {
+  storeId?: string;
+  storePassword?: string;
+  environment?: 'sandbox' | 'live';
+}
+
+export type PaymentEngineMode = 'manual_send_money' | 'sslcommerz_auto' | 'direct_pgw' | 'cod_only';
+
 export interface MarketplaceSettings {
   storeName: string;
   siteLogoUrl?: string;
@@ -76,9 +84,51 @@ export interface MarketplaceSettings {
   supportEmail: string;
   helplineNotice: string;
   officeAddress: string;
+  // Seller Portal Branding Settings
+  sellerPortalName?: string;
+  sellerPortalLogoUrl?: string;
+  sellerPortalHotline?: string;
+  sellerPortalEmail?: string;
+  sellerPortalBannerText?: string;
+  sellerStatBuyers?: string;
+  sellerStatFee?: string;
+  sellerStatPayout?: string;
+  sellerStatCommission?: string;
+  sellerStatDelivery?: string;
+  // Seller Dynamic Onboarding Steps
+  sellerOnboardingStep1Title?: string;
+  sellerOnboardingStep1Desc?: string;
+  sellerOnboardingStep2Title?: string;
+  sellerOnboardingStep2Desc?: string;
+  sellerOnboardingStep3Title?: string;
+  sellerOnboardingStep3Desc?: string;
+  // Seller Dynamic Value Propositions
+  sellerValueProp1Title?: string;
+  sellerValueProp1Desc?: string;
+  sellerValueProp2Title?: string;
+  sellerValueProp2Desc?: string;
+  sellerValueProp3Title?: string;
+  sellerValueProp3Desc?: string;
+  sellerValueProp4Title?: string;
+  sellerValueProp4Desc?: string;
+  // Seller FAQs & Commission Table
+  sellerFaqs?: Array<{ q: string; a: string }>;
+  sellerCategoryCommissions?: Array<{ categoryName: string; listingFee: string; commissionPercent: number; payoutCycle: string }>;
+  sellerEmpoweringStatement?: string;
+  sellerLogisticsPartners?: string[];
+  sellerPaymentChannels?: string[];
+  // Sub-Agent Portal Branding Settings
+  subAgentPortalName?: string;
+  subAgentPortalLogoUrl?: string;
+  subAgentPortalHotline?: string;
+  subAgentPortalEmail?: string;
   isAddToCartEnabled?: boolean;
   isBuyNowEnabled?: boolean;
   isCodEnabled?: boolean;
+  isOnlinePaymentEnabled?: boolean;
+  isAutoPaymentEnabled?: boolean;
+  isMerchantVerifyEnabled?: boolean;
+  paymentEngineMode?: PaymentEngineMode;
   whatsappNumber?: string;
   whatsappGreeting?: string;
   flashSaleHoursLeft?: number;
@@ -88,6 +138,12 @@ export interface MarketplaceSettings {
   courierConfig?: CourierApiConfig;
   bkashConfig?: BkashApiConfig;
   nagadConfig?: NagadApiConfig;
+  sslcommerzConfig?: SSLCommerzApiConfig;
+  smsConfig?: {
+    apiKey?: string;
+    senderId?: string;
+    provider?: 'ssl_wireless' | 'mim_sms' | 'greenweb' | 'elitbuzz';
+  };
   footerLinks?: { label: string; url: string }[];
   deliveryPartners?: DeliveryPartner[];
   footerFeatures?: FooterFeature[];
@@ -108,6 +164,18 @@ export interface Coupon {
   createdAt?: string;
 }
 
+export interface ProductQuestion {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  question: string;
+  answer?: string;
+  answeredBy?: string;
+  answeredAt?: string;
+  createdAt: string;
+}
+
 export interface User {
   id: string;
   customerId?: string; // Unique 8-digit QA Customer ID (e.g. QA-48291048)
@@ -117,6 +185,8 @@ export interface User {
   role: Role;
   avatar?: string;
   address?: ShippingAddress;
+  followedSellers?: string[];
+  collectedVouchers?: string[];
 }
 
 export interface Category {
@@ -195,6 +265,7 @@ export interface Product {
   media: ProductMedia[];
   variants?: ProductVariant[];
   reviews?: Review[];
+  questions?: ProductQuestion[];
 }
 
 export interface CartItem {
@@ -342,6 +413,21 @@ export type SellerStatus = 'Pending' | 'Approved' | 'Rejected' | 'Suspended';
 export type PayoutMethod = 'bKash' | 'Nagad' | 'Bank';
 export type WithdrawalStatus = 'Pending' | 'Approved' | 'Paid' | 'Rejected';
 
+export type SellerVerificationDocumentType = 'NID' | 'PASSPORT' | 'DRIVING_LICENSE';
+export type SellerVerificationStatus = 'UNVERIFIED' | 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED';
+
+export interface SellerVerificationRequest {
+  documentType: SellerVerificationDocumentType;
+  documentNumber: string;
+  fullNameAsPerDoc: string;
+  phone: string;
+  frontImageUrl: string;
+  backImageUrl?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+}
+
 export interface Seller {
   id: string;
   sellerIdNumber?: string; // Unique 8-digit QA Seller ID (e.g. QA-SL-82910482)
@@ -362,6 +448,9 @@ export interface Seller {
   rating: number; // e.g. 4.9
   followerCount: number;
   joinedDate: string;
+  isVerified?: boolean;
+  verificationStatus?: SellerVerificationStatus;
+  verificationData?: SellerVerificationRequest;
 }
 
 export interface SellerWallet {
@@ -463,6 +552,8 @@ export interface SponsoredAdCampaign {
   targetKeywords: string[];
   negativeKeywords?: string[];
   status: 'ACTIVE' | 'PAUSED' | 'ENDED';
+  durationDays?: number; // Total campaign duration in days (e.g. 3, 5, 7, 14, 30)
+  totalBudget?: number; // Total budget allocated = dailyBudget * durationDays
   impressions: number; // Real-time views count
   clicks: number; // Real-time clicks count
   spend: number; // Total money spent in BDT
@@ -496,7 +587,117 @@ export interface AdminAdSettings {
   nagadNumber: string;
   nagadType: 'Personal' | 'Merchant';
   rocketNumber: string;
+  rocketType?: 'Personal' | 'Merchant';
+  upayNumber?: string;
   bankDetails: string;
   depositNotice: string;
 }
+
+// ==========================================
+// AFFILIATE SYSTEM TYPES
+// ==========================================
+export type AffiliateStatus = 'Active' | 'Suspended' | 'Pending';
+export type AffiliateCommissionStatus = 'Pending' | 'Approved' | 'Cancelled';
+export type AffiliateWithdrawalStatus = 'Pending' | 'Approved' | 'Paid' | 'Rejected';
+
+export interface Affiliate {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  code: string; // e.g. "AFF-DEMO2026"
+  status: AffiliateStatus;
+  payoutMethod: 'bKash' | 'Nagad' | 'Bank';
+  payoutAccount: string;
+  availableBalance: number;
+  pendingBalance: number;
+  totalEarned: number;
+  totalWithdrawn: number;
+  joinedDate: string;
+  createdAt?: string;
+}
+
+export interface AffiliateLink {
+  id: string;
+  affiliateId: string;
+  affiliateCode: string;
+  productId?: string;
+  productTitle?: string;
+  productSlug?: string;
+  productImage?: string;
+  productPrice?: number;
+  url: string;
+  clicksCount: number;
+  ordersCount: number;
+  conversionRate: number;
+  createdAt: string;
+}
+
+export interface AffiliateClick {
+  id: string;
+  affiliateId: string;
+  affiliateCode: string;
+  productId?: string;
+  timestamp: string;
+  ipHash: string;
+  device?: string;
+}
+
+export interface AffiliateCommission {
+  id: string;
+  affiliateId: string;
+  affiliateCode: string;
+  orderId: string;
+  orderNumber: string;
+  orderItemId?: string;
+  productId: string;
+  productTitle: string;
+  productImage?: string;
+  quantity: number;
+  orderAmount: number;
+  commissionAmount: number;
+  commissionRate: number; // e.g. 10%
+  status: AffiliateCommissionStatus;
+  approveAfter: string; // ISO date string (15 days after delivery)
+  approvedAt?: string;
+  orderDate: string;
+  daysLeft?: number;
+}
+
+export interface AffiliateWithdrawal {
+  id: string;
+  affiliateId: string;
+  affiliateName: string;
+  affiliateCode: string;
+  payoutMethod: 'bKash' | 'Nagad' | 'Bank';
+  payoutAccount: string;
+  amount: number;
+  status: AffiliateWithdrawalStatus;
+  requestedAt: string;
+  processedAt?: string;
+  txnId?: string;
+  rejectReason?: string;
+}
+
+export interface AffiliateSettings {
+  globalCommissionPercent: number; // default 10
+  categoryCommissions: Record<string, number>; // categoryId -> percentage
+  holdPeriodDays: number; // default 15
+  withdrawalFrequency: 'once_per_month' | 'bi_weekly' | 'anytime';
+  minWithdrawalAmount: number; // default 500
+  cookieDurationDays: number; // default 30
+}
+
+export interface AffiliateFraudAlert {
+  id: string;
+  affiliateId: string;
+  affiliateName: string;
+  type: 'HIGH_IP_CLICKS' | 'SELF_ORDER_ATTEMPT' | 'HIGH_CANCEL_RATE' | 'UNUSUAL_VOLUME';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  description: string;
+  timestamp: string;
+  resolved: boolean;
+}
+
 

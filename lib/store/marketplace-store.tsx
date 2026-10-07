@@ -8,6 +8,7 @@ import {
   Order,
   Banner,
   User,
+  Review,
   OrderStatus,
   PaymentMethod,
   ShippingAddress,
@@ -30,7 +31,19 @@ import {
   AdminAdSettings,
   PayoutMethod,
   SellerStatus,
-  WithdrawalStatus
+  WithdrawalStatus,
+  SellerVerificationRequest,
+  SellerVerificationStatus,
+  Affiliate,
+  AffiliateLink,
+  AffiliateClick,
+  AffiliateCommission,
+  AffiliateWithdrawal,
+  AffiliateSettings,
+  AffiliateFraudAlert,
+  AffiliateStatus,
+  AffiliateCommissionStatus,
+  AffiliateWithdrawalStatus
 } from '../types/ecommerce';
 import {
   CATEGORIES,
@@ -57,9 +70,32 @@ import {
   DEFAULT_DEPOSIT_REQUESTS,
   DEFAULT_ADMIN_AD_SETTINGS
 } from '../data/seed-seller';
+import {
+  DEFAULT_AFFILIATES,
+  DEFAULT_AFFILIATE_SETTINGS,
+  DEFAULT_AFFILIATE_LINKS,
+  DEFAULT_AFFILIATE_CLICKS,
+  DEFAULT_AFFILIATE_COMMISSIONS,
+  DEFAULT_AFFILIATE_WITHDRAWALS,
+  DEFAULT_AFFILIATE_FRAUD_ALERTS
+} from '../data/seed-affiliate';
 import { Language, translations } from '../i18n/translations';
 import { useIsMounted } from '@/hooks/use-is-mounted';
-import { saveLeadToFirestore, saveOrderToFirestore, saveProductToFirestore, syncUserToFirestore } from '@/lib/firebase/services';
+import { 
+  saveLeadToFirestore, 
+  saveOrderToFirestore, 
+  saveProductToFirestore, 
+  syncUserToFirestore,
+  saveBannerToFirestore,
+  deleteBannerFromFirestore,
+  saveCategoryToFirestore,
+  deleteCategoryFromFirestore,
+  saveSettingsToFirestore,
+  saveCouponToFirestore,
+  deleteCouponFromFirestore
+} from '@/lib/firebase/services';
+import { db } from '@/lib/firebase/config';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { generateCustomerQAId, generateSellerQAId } from '@/lib/utils/id-generator';
 
 interface MarketplaceContextType {
@@ -89,7 +125,7 @@ interface MarketplaceContextType {
   updateUserProfile: (updates: Partial<User>) => void;
   isProfileModalOpen: boolean;
   setIsProfileModalOpen: (open: boolean) => void;
-  switchRole: (role: 'CUSTOMER' | 'ADMIN') => void;
+  switchRole: (role: 'CUSTOMER' | 'ADMIN' | 'SELLER') => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
   authModalTab: 'login' | 'signup' | 'subagent' | 'forgot_password';
@@ -131,6 +167,10 @@ interface MarketplaceContextType {
   addCoupon: (cpn: Omit<Coupon, 'id'>) => void;
   updateCoupon: (id: string, updates: Partial<Coupon>) => void;
   deleteCoupon: (id: string) => void;
+  collectedVouchers: string[];
+  collectVoucher: (code: string) => void;
+  isVoucherCollected: (code: string) => boolean;
+  addCustomerReviewWithPhoto: (productId: string, rating: number, comment: string, images?: string[]) => void;
 
   // Wishlist
   wishlist: string[];
@@ -177,7 +217,8 @@ interface MarketplaceContextType {
     courierPartner: string,
     status: OrderStatus,
     note?: string,
-    location?: string
+    location?: string,
+    trackingCode?: string
   ) => void;
 
   // Admin Product CRUD
@@ -263,6 +304,9 @@ interface MarketplaceContextType {
   approveSeller: (sellerId: string) => void;
   rejectSeller: (sellerId: string, reason?: string) => void;
   suspendSeller: (sellerId: string) => void;
+  submitSellerVerification: (sellerId: string, data: Omit<SellerVerificationRequest, 'submittedAt'>) => void;
+  approveSellerVerification: (sellerId: string) => void;
+  rejectSellerVerification: (sellerId: string, reason: string) => void;
   approveWithdrawal: (requestId: string) => void;
   rejectWithdrawal: (requestId: string, reason: string) => void;
   markNotificationAsRead: (notificationId: string) => void;
@@ -272,57 +316,44 @@ interface MarketplaceContextType {
   submitSellerDeposit: (data: Omit<SellerDepositRequest, 'id' | 'status' | 'createdAt'>) => void;
   approveSellerDeposit: (depositId: string) => void;
   rejectSellerDeposit: (depositId: string, reason: string) => void;
-  adjustSellerBalance: (sellerId: string, amount: number, type: 'CREDIT' | 'DEBIT', reason: string) => void;
+  adjustSellerBalance: (sellerId: string, amount: number, type: 'CREDIT' | 'DEBIT', balanceType: 'MAIN' | 'AD' | 'BOTH', reason: string) => void;
+  transferToAdBalance: (sellerId: string, amount: number) => boolean;
+
+  // Affiliate System State & Actions
+  affiliates: Affiliate[];
+  currentAffiliate: Affiliate | null;
+  setCurrentAffiliate: (aff: Affiliate | null) => void;
+  affiliateLinks: AffiliateLink[];
+  affiliateClicks: AffiliateClick[];
+  affiliateCommissions: AffiliateCommission[];
+  affiliateWithdrawals: AffiliateWithdrawal[];
+  affiliateSettings: AffiliateSettings;
+  affiliateFraudAlerts: AffiliateFraudAlert[];
+  activeAffiliateCode: string | null;
+  setActiveAffiliateCode: (code: string | null) => void;
+  registerAffiliate: (data: {
+    name: string;
+    phone: string;
+    email: string;
+    password?: string;
+    payoutMethod: 'bKash' | 'Nagad' | 'Bank';
+    payoutAccount: string;
+  }) => Promise<Affiliate>;
+  loginAffiliate: (email: string, pass: string) => Promise<Affiliate>;
+  upgradeCustomerToAffiliate: (payoutMethod: 'bKash' | 'Nagad' | 'Bank', payoutAccount: string) => Promise<Affiliate>;
+  generateAffiliateLink: (productId?: string) => AffiliateLink;
+  recordAffiliateClick: (code: string, productId?: string) => void;
+  requestAffiliateWithdrawal: (amount: number, payoutMethod: 'bKash' | 'Nagad' | 'Bank', payoutAccount: string) => boolean;
+  adminUpdateWithdrawal: (id: string, status: AffiliateWithdrawalStatus, txnId?: string, rejectReason?: string) => void;
+  adminToggleAffiliateStatus: (affiliateId: string) => void;
+  adminUpdateAffiliateSettings: (settings: Partial<AffiliateSettings>) => void;
+  adminCancelCommission: (commissionId: string, reason: string) => void;
+  runAffiliateCommissionApprovalCron: () => number;
 }
 
 const MarketplaceContext = createContext<MarketplaceContextType | undefined>(undefined);
 
-const INITIAL_LEADS: AudienceLead[] = [
-  {
-    id: 'ld-1',
-    name: 'Faisal Ahmed',
-    email: 'faisal.ahmed@outlook.com',
-    phone: '01711223344',
-    source: 'Footer Deals Newsletter',
-    productTitle: 'Soundcore by Anker R50i TWS Earbuds',
-    note: 'Interested in discount voucher code. Wants SMS alert when price drops.',
-    status: 'CONTACTED',
-    createdAt: '2026-10-01, 11:22 AM'
-  },
-  {
-    id: 'ld-2',
-    name: 'Tania Rahman',
-    email: 'tania.rahman@gmail.com',
-    phone: '01899887766',
-    source: 'Flash Sale Deal Alert',
-    productTitle: 'Apex Men Genuine Leather Formal Shoe',
-    note: 'Looking for Size 42 stock in Flash Sale.',
-    status: 'NEW',
-    createdAt: '2026-10-02, 08:14 AM'
-  },
-  {
-    id: 'ld-3',
-    name: 'Sakib Khan',
-    email: 'sakib.khan@yahoo.com',
-    phone: '01912345678',
-    source: 'Product Buy Intent Inquiry',
-    productTitle: 'Samsung Galaxy Watch 6 Classic 43mm',
-    note: 'Confirmed buyer - called on WhatsApp for home delivery.',
-    status: 'CONVERTED',
-    createdAt: '2026-10-02, 09:30 AM'
-  },
-  {
-    id: 'ld-4',
-    name: 'Nusrat Jahan',
-    email: 'nusrat.jahan24@gmail.com',
-    phone: '01678123456',
-    source: 'Direct Admin Entry',
-    productTitle: 'Realme Buds Air 5 Pro ANC',
-    note: 'Inquired from Facebook ad, requested 10% coupon.',
-    status: 'NEW',
-    createdAt: '2026-10-03, 10:15 AM'
-  }
-];
+const INITIAL_LEADS: AudienceLead[] = [];
 
 const DEFAULT_CUSTOMER: User = {
   id: 'usr-customer-1',
@@ -355,14 +386,14 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [language, setLanguageState] = useState<Language>('en');
   const [settings, setSettings] = useState<MarketplaceSettings>(DEFAULT_SETTINGS);
   const [gateways, setGateways] = useState<PaymentGatewayConfig[]>(DEFAULT_GATEWAYS);
-  const [user, setUser] = useState<User | null>(DEFAULT_CUSTOMER);
+  const [user, setUser] = useState<User | null>(null);
 
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [categories, setCategories] = useState<Category[]>(CATEGORIES);
   const [banners, setBanners] = useState<Banner[]>(HERO_BANNERS);
 
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [wishlist, setWishlist] = useState<string[]>(['prod-anker-soundcore-r50i']);
+  const [wishlist, setWishlist] = useState<string[]>([]);
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
 
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -390,6 +421,17 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [depositRequests, setDepositRequests] = useState<SellerDepositRequest[]>(DEFAULT_DEPOSIT_REQUESTS);
   const [adminAdSettings, setAdminAdSettings] = useState<AdminAdSettings>(DEFAULT_ADMIN_AD_SETTINGS);
   const [shopFollowers, setShopFollowers] = useState<string[]>(['seller-apex-01']);
+
+  // Affiliate System States
+  const [affiliates, setAffiliates] = useState<Affiliate[]>(DEFAULT_AFFILIATES);
+  const [currentAffiliate, setCurrentAffiliate] = useState<Affiliate | null>(DEFAULT_AFFILIATES[0]);
+  const [affiliateLinks, setAffiliateLinks] = useState<AffiliateLink[]>(DEFAULT_AFFILIATE_LINKS);
+  const [affiliateClicks, setAffiliateClicks] = useState<AffiliateClick[]>(DEFAULT_AFFILIATE_CLICKS);
+  const [affiliateCommissions, setAffiliateCommissions] = useState<AffiliateCommission[]>(DEFAULT_AFFILIATE_COMMISSIONS);
+  const [affiliateWithdrawals, setAffiliateWithdrawals] = useState<AffiliateWithdrawal[]>(DEFAULT_AFFILIATE_WITHDRAWALS);
+  const [affiliateSettings, setAffiliateSettings] = useState<AffiliateSettings>(DEFAULT_AFFILIATE_SETTINGS);
+  const [affiliateFraudAlerts, setAffiliateFraudAlerts] = useState<AffiliateFraudAlert[]>(DEFAULT_AFFILIATE_FRAUD_ALERTS);
+  const [activeAffiliateCode, setActiveAffiliateCode] = useState<string | null>(null);
 
   // Ref to always access latest campaigns without re-triggering memoized ranking calculations
   const sponsoredCampaignsRef = useRef<SponsoredAdCampaign[]>(DEFAULT_SPONSORED_CAMPAIGNS);
@@ -511,13 +553,60 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const savedAdSettings = localStorage.getItem('bazaarbd_ad_settings');
         if (savedAdSettings) setAdminAdSettings(JSON.parse(savedAdSettings));
 
+        // Load Affiliate System Data
+        const savedAffiliates = localStorage.getItem('quatro_affiliates');
+        if (savedAffiliates) setAffiliates(JSON.parse(savedAffiliates));
+
+        const savedCurAffiliate = localStorage.getItem('quatro_current_affiliate');
+        if (savedCurAffiliate) setCurrentAffiliate(JSON.parse(savedCurAffiliate));
+
+        const savedAffLinks = localStorage.getItem('quatro_affiliate_links');
+        if (savedAffLinks) setAffiliateLinks(JSON.parse(savedAffLinks));
+
+        const savedAffClicks = localStorage.getItem('quatro_affiliate_clicks');
+        if (savedAffClicks) setAffiliateClicks(JSON.parse(savedAffClicks));
+
+        const savedAffCommissions = localStorage.getItem('quatro_affiliate_commissions');
+        if (savedAffCommissions) setAffiliateCommissions(JSON.parse(savedAffCommissions));
+
+        const savedAffWithdrawals = localStorage.getItem('quatro_affiliate_withdrawals');
+        if (savedAffWithdrawals) setAffiliateWithdrawals(JSON.parse(savedAffWithdrawals));
+
+        const savedAffSettings = localStorage.getItem('quatro_affiliate_settings');
+        if (savedAffSettings) setAffiliateSettings(JSON.parse(savedAffSettings));
+
+        const savedAffFraud = localStorage.getItem('quatro_affiliate_fraud');
+        if (savedAffFraud) setAffiliateFraudAlerts(JSON.parse(savedAffFraud));
+
+        // Handle URL referral tracking (30 days cookie, last click wins)
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const refParam = urlParams.get('ref');
+          if (refParam && refParam.trim()) {
+            const cleanCode = refParam.trim().toUpperCase();
+            setActiveAffiliateCode(cleanCode);
+            localStorage.setItem('quatro_affiliate_ref', cleanCode);
+            try {
+              document.cookie = `quatro_affiliate_ref=${cleanCode}; max-age=${30 * 24 * 60 * 60}; path=/`;
+            } catch {}
+          } else {
+            const storedRef = localStorage.getItem('quatro_affiliate_ref');
+            if (storedRef) setActiveAffiliateCode(storedRef);
+          }
+        }
+
         const savedUser = localStorage.getItem('bazaarbd_user');
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser) as User;
-          if (!parsedUser.customerId) {
-            parsedUser.customerId = parsedUser.role === 'SELLER' ? generateSellerQAId() : generateCustomerQAId();
+          if (parsedUser.email === 'rayhan@bazaarbd.com' || parsedUser.name === 'Rayhan Ahmed') {
+            try { localStorage.removeItem('bazaarbd_user'); } catch {}
+            setUser(null);
+          } else {
+            if (!parsedUser.customerId) {
+              parsedUser.customerId = parsedUser.role === 'SELLER' ? generateSellerQAId() : generateCustomerQAId();
+            }
+            setUser(parsedUser);
           }
-          setUser(parsedUser);
         }
 
         const savedProducts = localStorage.getItem('bazaarbd_products');
@@ -537,6 +626,126 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }, 0);
     return () => clearTimeout(timer);
   }, []);
+
+  // ----------------------------------------------------------------------
+  // REAL-TIME FIRESTORE onSnapshot LISTENERS
+  // Automatically syncs products, notices, banners, categories, coupons & orders
+  // across all active client & admin sessions instantly without page refresh!
+  // ----------------------------------------------------------------------
+  useEffect(() => {
+    if (!db || !isMounted) return;
+
+    // 1. Real-time Products Sync
+    const unSubProducts = onSnapshot(
+      collection(db, 'products'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const liveProducts = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data()
+          })) as Product[];
+          
+          setProducts((prev) => {
+            const map = new Map<string, Product>();
+            INITIAL_PRODUCTS.forEach((p) => map.set(p.id, p));
+            prev.forEach((p) => map.set(p.id, p));
+            liveProducts.forEach((p) => map.set(p.id, p));
+            return Array.from(map.values());
+          });
+        }
+      },
+      () => {}
+    );
+
+    // 2. Real-time Banners Sync
+    const unSubBanners = onSnapshot(
+      collection(db, 'banners'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const liveBanners = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data()
+          })) as Banner[];
+          setBanners(liveBanners);
+        }
+      },
+      () => {}
+    );
+
+    // 3. Real-time Store Settings & Notices / Announcements Sync
+    const unSubSettings = onSnapshot(
+      doc(db, 'settings', 'general'),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const liveSettings = docSnap.data() as Partial<MarketplaceSettings>;
+          setSettings((prev) => ({ ...prev, ...liveSettings }));
+        }
+      },
+      () => {}
+    );
+
+    // 4. Real-time Categories Sync
+    const unSubCategories = onSnapshot(
+      collection(db, 'categories'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const liveCategories = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data()
+          })) as Category[];
+          setCategories(liveCategories);
+        }
+      },
+      () => {}
+    );
+
+    // 5. Real-time Coupons Sync
+    const unSubCoupons = onSnapshot(
+      collection(db, 'coupons'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const liveCoupons = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data()
+          })) as Coupon[];
+          setCoupons(liveCoupons);
+        }
+      },
+      () => {}
+    );
+
+    // 6. Real-time Orders Sync
+    const unSubOrders = onSnapshot(
+      collection(db, 'orders'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const liveOrders = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data()
+          })) as Order[];
+          
+          setOrders((prev) => {
+            const map = new Map<string, Order>();
+            prev.forEach((o) => map.set(o.id, o));
+            liveOrders.forEach((o) => map.set(o.id, o));
+            return Array.from(map.values()).sort(
+              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+          });
+        }
+      },
+      () => {}
+    );
+
+    return () => {
+      unSubProducts();
+      unSubBanners();
+      unSubSettings();
+      unSubCategories();
+      unSubCoupons();
+      unSubOrders();
+    };
+  }, [isMounted]);
 
   // Save changes to localStorage only after mounting
   useEffect(() => {
@@ -720,16 +929,88 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       id: `cpn-${Date.now()}`
     };
     setCoupons((prev) => [newCoupon, ...prev]);
+    saveCouponToFirestore(newCoupon).catch((err) => console.warn('Sync coupon notice:', err));
     showToast(`Coupon "${cpn.code}" added successfully!`, 'success');
   };
 
   const updateCoupon = (id: string, updates: Partial<Coupon>) => {
     setCoupons((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+    saveCouponToFirestore({ id, ...updates }).catch((err) => console.warn('Update coupon notice:', err));
     showToast('Coupon updated!', 'success');
+  };
+
+  const [collectedVouchers, setCollectedVouchers] = useState<string[]>(['WELCOME50', 'QUATRO10']);
+
+  const collectVoucher = (code: string) => {
+    const clean = code.trim().toUpperCase();
+    if (collectedVouchers.includes(clean)) {
+      showToast(
+        language === 'bn' ? 'ভাউচারটি ইতিমধ্যে আপনার কালেকশনে সংরক্ষিত রয়েছে!' : 'Voucher already collected in your wallet!',
+        'info'
+      );
+      return;
+    }
+    setCollectedVouchers((prev) => [...prev, clean]);
+    showToast(
+      language === 'bn'
+        ? `🎉 ভাউচার "${clean}" সফলভাবে কালেক্ট করা হয়েছে! চেকআউটে স্বয়ংক্রিয় ডিসকাউন্ট পাবেন।`
+        : `🎉 Voucher "${clean}" collected! Ready to apply at checkout.`,
+      'success'
+    );
+  };
+
+  const isVoucherCollected = (code: string) => {
+    return collectedVouchers.includes(code.trim().toUpperCase());
+  };
+
+  const addCustomerReviewWithPhoto = (
+    productId: string,
+    rating: number,
+    comment: string,
+    images: string[] = []
+  ) => {
+    const newRev: Review = {
+      id: `rev-${Date.now()}`,
+      productId,
+      userId: user ? user.id : 'usr-guest',
+      userName: user ? user.name : 'Verified Buyer',
+      userCity: user?.address?.district || 'Dhaka',
+      rating,
+      comment,
+      images,
+      isVerifiedPurchase: true,
+      isApproved: true,
+      createdAt: 'Just now'
+    };
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          const updatedReviews = [newRev, ...(p.reviews || [])];
+          const totalRating = updatedReviews.reduce((sum, r) => sum + r.rating, 0);
+          const avgRating = Number((totalRating / updatedReviews.length).toFixed(1));
+          return {
+            ...p,
+            rating: avgRating,
+            reviewCount: updatedReviews.length,
+            reviews: updatedReviews
+          };
+        }
+        return p;
+      })
+    );
+
+    showToast(
+      language === 'bn'
+        ? 'আপনার আনবক্সিং ফটো ও রিভিউ সফলভাবে প্রকাশিত হয়েছে!'
+        : 'Your review and photo have been published!',
+      'success'
+    );
   };
 
   const deleteCoupon = (id: string) => {
     setCoupons((prev) => prev.filter((c) => c.id !== id));
+    deleteCouponFromFirestore(id).catch((err) => console.warn('Delete coupon notice:', err));
     showToast('Coupon deleted', 'info');
   };
 
@@ -970,6 +1251,46 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const addSellerProduct = (prodData: Omit<Product, 'id' | 'slug'>) => {
     const seller = currentSeller || DEFAULT_SELLERS[0];
+
+    // Enforce Account Approval & Suspension Status
+    if (seller.status === 'Suspended') {
+      showToast(
+        language === 'bn'
+          ? '🔒 দুঃখিত, আপনার সেলার একাউন্টটি সাময়িকভাবে স্থগিত (Suspended) করা হয়েছে!'
+          : '🔒 Sorry, your seller account is suspended! Please contact support.',
+        'error'
+      );
+      return;
+    }
+    if (seller.status === 'Pending') {
+      showToast(
+        language === 'bn'
+          ? '🔒 আপনার সেলার একাউন্টটি এখনও পেন্ডিং (অ্যাডমিন অনুমোদনের অপেক্ষায়) আছে!'
+          : '🔒 Your seller account is pending admin approval!',
+        'error'
+      );
+      return;
+    }
+    if (seller.status === 'Rejected') {
+      showToast(
+        language === 'bn'
+          ? '🔒 আপনার সেলার একাউন্ট রেজিস্ট্রেশন বাতিল (Rejected) করা হয়েছে!'
+          : '🔒 Your seller account registration is rejected!',
+        'error'
+      );
+      return;
+    }
+
+    // Enforce Account Verification Rule
+    if (seller.verificationStatus !== 'VERIFIED' && !seller.isVerified) {
+      showToast(
+        language === 'bn'
+          ? 'প্রোডাক্ট আপলোড করতে প্রথমে আপনার সেলার একাউন্ট ভেরিফাই করুন (এনআইডি/পাসপোর্ট/লাইসেন্স)!'
+          : 'Account Verification Required! Please submit your NID/Passport/License verification to upload products.',
+        'error'
+      );
+      return;
+    }
 
     const slug = prodData.title
       .toLowerCase()
@@ -1226,6 +1547,7 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       salesGenerated: 0,
       ordersCount: 0,
       roas: 0,
+      durationDays: data.durationDays || 7,
       createdAt: new Date().toISOString().split('T')[0],
       startedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
@@ -1535,7 +1857,7 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     showToast('Deposit request marked as rejected.', 'info');
   };
 
-  const adjustSellerBalance = (sellerId: string, amount: number, type: 'CREDIT' | 'DEBIT', reason: string) => {
+  const adjustSellerBalance = (sellerId: string, amount: number, type: 'CREDIT' | 'DEBIT', balanceType: 'MAIN' | 'AD' | 'BOTH', reason: string) => {
     setSellerWallets((prev) => {
       const current = prev[sellerId] || {
         id: `wal-${sellerId}`,
@@ -1550,17 +1872,43 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         updatedAt: new Date().toISOString()
       };
       const diff = type === 'CREDIT' ? amount : -amount;
+      const updatedAvailable = (balanceType === 'MAIN' || balanceType === 'BOTH')
+        ? Math.max(0, current.availableBalance + diff)
+        : current.availableBalance;
+      const updatedAd = (balanceType === 'AD' || balanceType === 'BOTH')
+        ? Math.max(0, (current.adBalance || 0) + diff)
+        : (current.adBalance || 0);
+
       return {
         ...prev,
         [sellerId]: {
           ...current,
-          availableBalance: Math.max(0, current.availableBalance + diff),
-          adBalance: Math.max(0, (current.adBalance || 0) + diff),
+          availableBalance: updatedAvailable,
+          adBalance: updatedAd,
           updatedAt: new Date().toISOString()
         }
       };
     });
-    showToast(`Seller balance ${type === 'CREDIT' ? 'credited' : 'debited'} by ৳${amount} (${reason})`, 'success');
+    showToast(`Seller balance adjusted: ৳${amount} (${reason})`, 'success');
+  };
+
+  const transferToAdBalance = (sellerId: string, amount: number) => {
+    const wallet = sellerWallets[sellerId] || { availableBalance: 0, adBalance: 0 };
+    if (amount <= 0 || amount > wallet.availableBalance) {
+      showToast('Insufficient available balance for transfer!', 'error');
+      return false;
+    }
+    setSellerWallets((prev) => ({
+      ...prev,
+      [sellerId]: {
+        ...wallet,
+        availableBalance: wallet.availableBalance - amount,
+        adBalance: (wallet.adBalance || 0) + amount,
+        updatedAt: new Date().toISOString()
+      }
+    }));
+    showToast(`Successfully transferred ৳${amount.toLocaleString()} to Ad Balance!`, 'success');
+    return true;
   };
 
   const toggleFollowShop = (sellerId: string) => {
@@ -1609,6 +1957,148 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const suspendSeller = (sellerId: string) => {
     setSellers((prev) => prev.map((s) => (s.id === sellerId ? { ...s, status: 'Suspended' } : s)));
     showToast('Seller account suspended.', 'error');
+  };
+
+  const submitSellerVerification = (sellerId: string, data: Omit<SellerVerificationRequest, 'submittedAt'>) => {
+    const request: SellerVerificationRequest = {
+      ...data,
+      submittedAt: new Date().toLocaleString()
+    };
+
+    setSellers((prev) =>
+      prev.map((s) =>
+        s.id === sellerId
+          ? {
+              ...s,
+              isVerified: false,
+              verificationStatus: 'PENDING_VERIFICATION',
+              verificationData: request
+            }
+          : s
+      )
+    );
+
+    if (currentSeller && currentSeller.id === sellerId) {
+      setCurrentSeller((prev) =>
+        prev
+          ? {
+              ...prev,
+              isVerified: false,
+              verificationStatus: 'PENDING_VERIFICATION',
+              verificationData: request
+            }
+          : null
+      );
+    }
+
+    const notif: SellerNotification = {
+      id: `notif-verif-${Date.now()}`,
+      sellerId,
+      title: 'KYC Document Submitted for Review 📄',
+      message: `Your ${data.documentType} verification details have been received. Admin will review within 24 hours.`,
+      type: 'PRODUCT_STATUS',
+      isRead: false,
+      createdAt: new Date().toLocaleString()
+    };
+    setSellerNotifications((prev) => [notif, ...prev]);
+
+    showToast(
+      language === 'bn'
+        ? 'আপনার এনআইডি/পাসপোর্ট/লাইসেন্স ভেরিফিকেশন আবেদন জমা হয়েছে! অ্যাডমিন ২৪ ঘণ্টার মধ্যে রিভিউ করবে।'
+        : 'KYC Verification request submitted! Admin will review your document within 24 hours.',
+      'success'
+    );
+  };
+
+  const approveSellerVerification = (sellerId: string) => {
+    setSellers((prev) =>
+      prev.map((s) =>
+        s.id === sellerId
+          ? {
+              ...s,
+              isVerified: true,
+              verificationStatus: 'VERIFIED',
+              verificationData: s.verificationData
+                ? { ...s.verificationData, reviewedAt: new Date().toLocaleString() }
+                : undefined
+            }
+          : s
+      )
+    );
+
+    if (currentSeller && currentSeller.id === sellerId) {
+      setCurrentSeller((prev) =>
+        prev
+          ? {
+              ...prev,
+              isVerified: true,
+              verificationStatus: 'VERIFIED'
+            }
+          : null
+      );
+    }
+
+    const notif: SellerNotification = {
+      id: `notif-verif-approved-${Date.now()}`,
+      sellerId,
+      title: 'Account Verification Approved! ✅',
+      message: 'Congratulations! Your NID/Passport/Driving License verification is APPROVED. You can now upload products and sell.',
+      type: 'PRODUCT_STATUS',
+      isRead: false,
+      createdAt: new Date().toLocaleString()
+    };
+    setSellerNotifications((prev) => [notif, ...prev]);
+
+    showToast('Seller KYC Account Verification approved successfully!', 'success');
+  };
+
+  const rejectSellerVerification = (sellerId: string, reason: string) => {
+    setSellers((prev) =>
+      prev.map((s) =>
+        s.id === sellerId
+          ? {
+              ...s,
+              isVerified: false,
+              verificationStatus: 'REJECTED',
+              verificationData: s.verificationData
+                ? {
+                    ...s.verificationData,
+                    reviewedAt: new Date().toLocaleString(),
+                    rejectionReason: reason
+                  }
+                : undefined
+            }
+          : s
+      )
+    );
+
+    if (currentSeller && currentSeller.id === sellerId) {
+      setCurrentSeller((prev) =>
+        prev
+          ? {
+              ...prev,
+              isVerified: false,
+              verificationStatus: 'REJECTED',
+              verificationData: prev.verificationData
+                ? { ...prev.verificationData, rejectionReason: reason }
+                : undefined
+            }
+          : null
+      );
+    }
+
+    const notif: SellerNotification = {
+      id: `notif-verif-rej-${Date.now()}`,
+      sellerId,
+      title: 'Account Verification Rejected ⚠️',
+      message: `Your account verification request was rejected. Reason: ${reason}`,
+      type: 'PRODUCT_STATUS',
+      isRead: false,
+      createdAt: new Date().toLocaleString()
+    };
+    setSellerNotifications((prev) => [notif, ...prev]);
+
+    showToast(`Seller verification rejected (${reason})`, 'info');
   };
 
   const approveWithdrawal = (requestId: string) => {
@@ -1706,8 +2196,12 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const updateSettings = (newSettings: Partial<MarketplaceSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
-    showToast('Marketplace contact settings saved!', 'success');
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      saveSettingsToFirestore(updated).catch((err) => console.warn('Sync settings notice:', err));
+      return updated;
+    });
+    showToast('Marketplace notice & contact settings saved live!', 'success');
   };
 
   // Payment Gateways
@@ -1739,16 +2233,19 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       slug
     };
     setCategories((prev) => [...prev, newCat]);
+    saveCategoryToFirestore(newCat).catch((err) => console.warn('Sync category notice:', err));
     showToast(`Category "${cat.name}" added successfully!`, 'success');
   };
 
   const updateCategory = (id: string, updates: Partial<Category>) => {
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+    saveCategoryToFirestore({ id, ...updates }).catch((err) => console.warn('Update category notice:', err));
     showToast('Category updated!', 'success');
   };
 
   const deleteCategory = (id: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== id));
+    deleteCategoryFromFirestore(id).catch((err) => console.warn('Delete category notice:', err));
     showToast('Category removed', 'info');
   };
 
@@ -1759,16 +2256,19 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       id: `banner-${Date.now()}`
     };
     setBanners((prev) => [newBanner, ...prev]);
+    saveBannerToFirestore(newBanner).catch((err) => console.warn('Sync banner notice:', err));
     showToast(`Banner "${bannerData.title}" added successfully!`, 'success');
   };
 
   const updateBanner = (id: string, updates: Partial<Banner>) => {
     setBanners((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    saveBannerToFirestore({ id, ...updates }).catch((err) => console.warn('Update banner notice:', err));
     showToast('Banner updated successfully!', 'success');
   };
 
   const deleteBanner = (id: string) => {
     setBanners((prev) => prev.filter((b) => b.id !== id));
+    deleteBannerFromFirestore(id).catch((err) => console.warn('Delete banner notice:', err));
     showToast('Banner removed', 'info');
   };
 
@@ -1815,11 +2315,21 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return `৳${amount.toLocaleString('en-IN')}`;
   };
 
-  const switchRole = (newRole: 'CUSTOMER' | 'ADMIN') => {
+  const switchRole = (newRole: 'CUSTOMER' | 'ADMIN' | 'SELLER') => {
     if (newRole === 'ADMIN') {
       setUser(DEFAULT_ADMIN);
       setIsAdminView(true);
       showToast('Switched to Admin Mode (Full Privileges)', 'info');
+    } else if (newRole === 'SELLER') {
+      const activeSeller = DEFAULT_SELLERS[0] || { id: 'seller-apex-01', shopName: 'Apex Store' };
+      setUser({
+        ...DEFAULT_CUSTOMER,
+        id: activeSeller.id,
+        name: activeSeller.shopName,
+        role: 'SELLER'
+      });
+      setIsAdminView(false);
+      showToast('Switched to Seller Mode', 'info');
     } else {
       setUser(DEFAULT_CUSTOMER);
       setIsAdminView(false);
@@ -1834,6 +2344,19 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     variantName?: string,
     variantValue?: string
   ) => {
+    // ACCESS CONTROL: Verify user authentication before allowing Add to Cart
+    if (!user) {
+      setAuthModalTab('login');
+      setIsAuthModalOpen(true);
+      showToast(
+        language === 'bn'
+          ? 'কার্টে পণ্য যোগ করতে অনুগ্রহ করে প্রথমে অ্যাকাউন্টে লগইন বা সাইন-আপ করুন।'
+          : 'Please log in or sign up to add items to your cart.',
+        'info'
+      );
+      return;
+    }
+
     if (settings.isAddToCartEnabled === false) {
       showToast(
         language === 'bn'
@@ -2017,24 +2540,24 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         items: sItems,
         subtotal: subtotalAmt,
         orderStatus: 'Confirmed' as const,
-        trackingNumber: `PATHAO-${sId.slice(-4)}-${Math.floor(1000 + Math.random() * 9000)}`
+        trackingNumber: `STDF-${sId.slice(-4)}-${Math.floor(1000 + Math.random() * 9000)}`
       };
     });
 
     const initialTrackingLogs: OrderTrackingStep[] = [
       {
         status: 'Confirmed',
-        title: 'Order Placed & Verified',
-        description: `Order ${orderNumber} placed via ${paymentMethod}. Verification complete.`,
-        location: 'QUATRO Central Hub, Dhaka',
+        title: 'Order Placed & Steadfast Booking Created',
+        description: `Order ${orderNumber} confirmed. Steadfast Courier consignment registered.`,
+        location: 'Merchant Warehouse / Dhaka Central Hub',
         timestamp: new Date().toLocaleString(),
         completed: true
       },
       {
         status: 'Processing',
-        title: 'Quality Check & Packing',
-        description: 'Items gathered from merchant warehouse and packed in protective packaging.',
-        location: 'Dhaka Fulfillment Center',
+        title: 'Packaging & Ready for Courier Pickup',
+        description: 'Package boxed with protective air cushions. Assigned to Steadfast Express pickup rider.',
+        location: 'Dhaka Fulfillment Hub',
         timestamp: new Date().toLocaleString(),
         completed: false
       }
@@ -2056,8 +2579,8 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       total,
       items: orderItems,
       subOrders,
-      trackingNumber: `PATHAO-${Math.floor(100000 + Math.random() * 900000)}`,
-      courierPartner: 'Pathao Express',
+      trackingNumber: `STDF-${Math.floor(10000000 + Math.random() * 90000000)}`,
+      courierPartner: 'Steadfast Express',
       transactionId,
       senderNumber,
       trackingLogs: initialTrackingLogs,
@@ -2103,6 +2626,104 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         })
       );
     });
+
+    // Attribute order to active affiliate referral code
+    if (activeAffiliateCode) {
+      const affiliateObj = affiliates.find(
+        (a) => a.code.toUpperCase() === activeAffiliateCode.toUpperCase() && a.status === 'Active'
+      );
+      if (affiliateObj) {
+        // Business Rule: Self-purchase is blocked! An affiliate cannot earn commission on their own order
+        const isSelfPurchase =
+          user?.email?.toLowerCase() === affiliateObj.email.toLowerCase() ||
+          user?.phone === affiliateObj.phone ||
+          user?.id === affiliateObj.userId;
+
+        if (isSelfPurchase) {
+          const fraudAlert: AffiliateFraudAlert = {
+            id: `fraud-${Date.now()}`,
+            affiliateId: affiliateObj.id,
+            affiliateName: affiliateObj.name,
+            type: 'SELF_ORDER_ATTEMPT',
+            severity: 'LOW',
+            description: `Self-purchase blocked: User attempted to purchase with their own affiliate ref code (${affiliateObj.code}).`,
+            timestamp: new Date().toISOString(),
+            resolved: false
+          };
+          setAffiliateFraudAlerts((prev) => [fraudAlert, ...prev]);
+        } else {
+          let totalComm = 0;
+          const newCommissions: AffiliateCommission[] = [];
+
+          orderItems.forEach((it) => {
+            const productObj = products.find((p) => p.id === it.productId);
+            const catId = productObj?.categoryId || '';
+            const rate = affiliateSettings.categoryCommissions[catId] || affiliateSettings.globalCommissionPercent || 10;
+            const commAmt = Math.round((it.price * it.quantity * rate) / 100);
+
+            if (commAmt > 0) {
+              totalComm += commAmt;
+              newCommissions.push({
+                id: `comm-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+                affiliateId: affiliateObj.id,
+                affiliateCode: affiliateObj.code,
+                orderId: newOrder.id,
+                orderNumber: newOrder.orderNumber,
+                orderItemId: it.id,
+                productId: it.productId,
+                productTitle: it.title,
+                productImage: it.image,
+                quantity: it.quantity,
+                orderAmount: it.price * it.quantity,
+                commissionAmount: commAmt,
+                commissionRate: rate,
+                status: 'Pending',
+                approveAfter: new Date(Date.now() + (affiliateSettings.holdPeriodDays || 15) * 24 * 60 * 60 * 1000).toISOString(),
+                orderDate: new Date().toISOString(),
+                daysLeft: affiliateSettings.holdPeriodDays || 15
+              });
+            }
+          });
+
+          if (newCommissions.length > 0) {
+            setAffiliateCommissions((prev) => [...newCommissions, ...prev]);
+            setAffiliates((prev) =>
+              prev.map((a) =>
+                a.id === affiliateObj.id
+                  ? {
+                      ...a,
+                      pendingBalance: a.pendingBalance + totalComm,
+                      totalEarned: a.totalEarned + totalComm
+                    }
+                  : a
+              )
+            );
+            if (currentAffiliate && currentAffiliate.id === affiliateObj.id) {
+              setCurrentAffiliate((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      pendingBalance: prev.pendingBalance + totalComm,
+                      totalEarned: prev.totalEarned + totalComm
+                    }
+                  : null
+              );
+            }
+            // Update link order counters & conversion rates
+            setAffiliateLinks((prev) =>
+              prev.map((l) => {
+                if (l.affiliateId === affiliateObj.id) {
+                  const nextOrders = l.ordersCount + 1;
+                  const nextCr = l.clicksCount > 0 ? Number(((nextOrders / l.clicksCount) * 100).toFixed(2)) : 0;
+                  return { ...l, ordersCount: nextOrders, conversionRate: nextCr };
+                }
+                return l;
+              })
+            );
+          }
+        }
+      }
+    }
 
     setLastPlacedOrder(newOrder);
     clearCart();
@@ -2177,6 +2798,44 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return ord;
       })
     );
+
+    // Business Rules: Affiliate Commission lifecycle sync
+    if (status === 'Cancelled' || status === 'Returned') {
+      setAffiliateCommissions((prev) =>
+        prev.map((c) => {
+          if (c.orderId === orderId && c.status === 'Pending') {
+            setAffiliates((aList) =>
+              aList.map((a) =>
+                a.id === c.affiliateId
+                  ? {
+                      ...a,
+                      pendingBalance: Math.max(0, a.pendingBalance - c.commissionAmount),
+                      totalEarned: Math.max(0, a.totalEarned - c.commissionAmount)
+                    }
+                  : a
+              )
+            );
+            return { ...c, status: 'Cancelled' as const, daysLeft: 0 };
+          }
+          return c;
+        })
+      );
+    } else if (status === 'Delivered') {
+      const holdDays = affiliateSettings.holdPeriodDays || 15;
+      setAffiliateCommissions((prev) =>
+        prev.map((c) => {
+          if (c.orderId === orderId && c.status === 'Pending') {
+            return {
+              ...c,
+              approveAfter: new Date(Date.now() + holdDays * 24 * 3600 * 1000).toISOString(),
+              daysLeft: holdDays
+            };
+          }
+          return c;
+        })
+      );
+    }
+
     showToast(`Order status updated to ${status}`, 'success');
   };
 
@@ -2200,7 +2859,8 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     courierPartner: string,
     status: OrderStatus,
     note?: string,
-    location?: string
+    location?: string,
+    trackingCode?: string
   ) => {
     setOrders((prev) =>
       prev.map((ord) => {
@@ -2219,6 +2879,7 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
             ...ord,
             orderStatus: status,
             courierPartner,
+            trackingNumber: trackingCode || ord.trackingNumber,
             trackingLogs: updatedLogs
           };
         }
@@ -2278,6 +2939,401 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     showToast('Customer review approved and published!', 'success');
   };
 
+  // ----------------------------------------------------------------------
+  // AFFILIATE SYSTEM ACTIONS
+  // ----------------------------------------------------------------------
+  const registerAffiliate = async (data: {
+    name: string;
+    phone: string;
+    email: string;
+    password?: string;
+    payoutMethod: 'bKash' | 'Nagad' | 'Bank';
+    payoutAccount: string;
+  }): Promise<Affiliate> => {
+    const initials = (data.name.replace(/[^a-zA-Z]/g, '').slice(0, 3) || 'AFF').toUpperCase();
+    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+    const code = `AFF-${initials}${randomDigits}`;
+
+    const newAffiliate: Affiliate = {
+      id: `aff-${Date.now()}`,
+      userId: `usr-aff-${Date.now()}`,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      code,
+      status: 'Active',
+      payoutMethod: data.payoutMethod,
+      payoutAccount: data.payoutAccount,
+      availableBalance: 0,
+      pendingBalance: 0,
+      totalEarned: 0,
+      totalWithdrawn: 0,
+      joinedDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
+    };
+
+    setAffiliates((prev) => [newAffiliate, ...prev]);
+    setCurrentAffiliate(newAffiliate);
+    const affiliateUser: User = {
+      id: newAffiliate.userId,
+      name: newAffiliate.name,
+      email: newAffiliate.email,
+      phone: newAffiliate.phone,
+      role: 'AFFILIATE',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
+    };
+    setUser(affiliateUser);
+    localStorage.setItem('quatro_current_affiliate', JSON.stringify(newAffiliate));
+    localStorage.setItem('bazaarbd_user', JSON.stringify(affiliateUser));
+    showToast(`Welcome! Your affiliate code is ${newAffiliate.code}`, 'success');
+    return newAffiliate;
+  };
+
+  const loginAffiliate = async (email: string, pass: string): Promise<Affiliate> => {
+    const match = affiliates.find(
+      (a) => a.email.toLowerCase() === email.toLowerCase() || a.code.toLowerCase() === email.toLowerCase()
+    );
+    if (!match) {
+      throw new Error('No affiliate account found with this email or code.');
+    }
+    if (match.status === 'Suspended') {
+      throw new Error('Your affiliate account has been suspended. Please contact support.');
+    }
+    setCurrentAffiliate(match);
+    const affiliateUser: User = {
+      id: match.userId,
+      name: match.name,
+      email: match.email,
+      phone: match.phone,
+      role: 'AFFILIATE',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
+    };
+    setUser(affiliateUser);
+    localStorage.setItem('quatro_current_affiliate', JSON.stringify(match));
+    localStorage.setItem('bazaarbd_user', JSON.stringify(affiliateUser));
+    showToast(`Logged in to Affiliate Portal as ${match.name}`, 'success');
+    return match;
+  };
+
+  const upgradeCustomerToAffiliate = async (
+    payoutMethod: 'bKash' | 'Nagad' | 'Bank',
+    payoutAccount: string
+  ): Promise<Affiliate> => {
+    if (!user) throw new Error('Must be logged in to upgrade account');
+    const existing = affiliates.find((a) => a.email.toLowerCase() === user.email.toLowerCase() || a.userId === user.id);
+    if (existing) {
+      setCurrentAffiliate(existing);
+      setUser({ ...user, role: 'AFFILIATE' });
+      showToast('Switched to Affiliate account!', 'info');
+      return existing;
+    }
+    const initials = (user.name.replace(/[^a-zA-Z]/g, '').slice(0, 3) || 'AFF').toUpperCase();
+    const code = `AFF-${initials}${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newAff: Affiliate = {
+      id: `aff-${Date.now()}`,
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '01700000000',
+      code,
+      status: 'Active',
+      payoutMethod,
+      payoutAccount,
+      availableBalance: 0,
+      pendingBalance: 0,
+      totalEarned: 0,
+      totalWithdrawn: 0,
+      joinedDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
+    };
+
+    setAffiliates((prev) => [newAff, ...prev]);
+    setCurrentAffiliate(newAff);
+    setUser({ ...user, role: 'AFFILIATE' });
+    localStorage.setItem('quatro_current_affiliate', JSON.stringify(newAff));
+    showToast(`Account upgraded! You are now an official QUATRO Affiliate (${code})`, 'success');
+    return newAff;
+  };
+
+  const generateAffiliateLink = (productId?: string): AffiliateLink => {
+    const activeAff = currentAffiliate || affiliates[0];
+    const product = productId ? products.find((p) => p.id === productId) : undefined;
+    const url = product
+      ? `/product/${product.slug}?ref=${activeAff.code}`
+      : `/?ref=${activeAff.code}`;
+
+    const existing = affiliateLinks.find(
+      (l) => l.affiliateId === activeAff.id && l.productId === (product?.id || undefined)
+    );
+    if (existing) return existing;
+
+    const newLink: AffiliateLink = {
+      id: `link-${Date.now()}`,
+      affiliateId: activeAff.id,
+      affiliateCode: activeAff.code,
+      productId: product?.id,
+      productTitle: product?.title,
+      productSlug: product?.slug,
+      productImage: product?.media[0]?.url,
+      productPrice: product?.price,
+      url,
+      clicksCount: 0,
+      ordersCount: 0,
+      conversionRate: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    setAffiliateLinks((prev) => [newLink, ...prev]);
+    return newLink;
+  };
+
+  const recordAffiliateClick = (code: string, productId?: string) => {
+    const affiliate = affiliates.find((a) => a.code.toUpperCase() === code.toUpperCase() && a.status === 'Active');
+    if (!affiliate) return;
+
+    setActiveAffiliateCode(affiliate.code);
+    localStorage.setItem('quatro_affiliate_ref', affiliate.code);
+    try {
+      document.cookie = `quatro_affiliate_ref=${affiliate.code}; max-age=${30 * 24 * 60 * 60}; path=/`;
+    } catch {}
+
+    const newClick: AffiliateClick = {
+      id: `click-${Date.now()}`,
+      affiliateId: affiliate.id,
+      affiliateCode: affiliate.code,
+      productId,
+      timestamp: new Date().toISOString(),
+      ipHash: `${Math.floor(100 + Math.random() * 900)}.${Math.floor(100 + Math.random() * 900)}***`,
+      device: typeof navigator !== 'undefined' && /Mobi/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'
+    };
+
+    setAffiliateClicks((prev) => [newClick, ...prev]);
+
+    setAffiliateLinks((prev) =>
+      prev.map((l) => {
+        if (l.affiliateId === affiliate.id && (!productId || l.productId === productId)) {
+          const nextClicks = l.clicksCount + 1;
+          const nextCr = nextClicks > 0 ? Number(((l.ordersCount / nextClicks) * 100).toFixed(2)) : 0;
+          return { ...l, clicksCount: nextClicks, conversionRate: nextCr };
+        }
+        return l;
+      })
+    );
+  };
+
+  const requestAffiliateWithdrawal = (
+    amount: number,
+    payoutMethod: 'bKash' | 'Nagad' | 'Bank',
+    payoutAccount: string
+  ): boolean => {
+    const aff = currentAffiliate || affiliates[0];
+    const minAmount = affiliateSettings.minWithdrawalAmount || 500;
+
+    if (amount < minAmount) {
+      showToast(`Minimum withdrawal amount is ৳${minAmount}`, 'error');
+      return false;
+    }
+    if (amount > aff.availableBalance) {
+      showToast(`Requested amount exceeds available balance (৳${aff.availableBalance})`, 'error');
+      return false;
+    }
+
+    const cycleDays = affiliateSettings.withdrawalFrequency === 'once_per_month' ? 30 : affiliateSettings.withdrawalFrequency === 'bi_weekly' ? 15 : 0;
+    if (cycleDays > 0) {
+      const recentWithdrawal = affiliateWithdrawals.find((w) => {
+        if (w.affiliateId === aff.id && w.status !== 'Rejected') {
+          const daysAgo = (Date.now() - new Date(w.requestedAt).getTime()) / (24 * 3600 * 1000);
+          return daysAgo < cycleDays;
+        }
+        return false;
+      });
+      if (recentWithdrawal) {
+        const nextDate = new Date(new Date(recentWithdrawal.requestedAt).getTime() + cycleDays * 24 * 3600 * 1000)
+          .toISOString()
+          .split('T')[0];
+        showToast(`Withdrawal limit reached (${cycleDays}-day cycle). Next withdrawal available on ${nextDate}`, 'error');
+        return false;
+      }
+    }
+
+    setAffiliates((prev) =>
+      prev.map((a) => (a.id === aff.id ? { ...a, availableBalance: a.availableBalance - amount } : a))
+    );
+    if (currentAffiliate && currentAffiliate.id === aff.id) {
+      setCurrentAffiliate({ ...currentAffiliate, availableBalance: currentAffiliate.availableBalance - amount });
+    }
+
+    const newReq: AffiliateWithdrawal = {
+      id: `with-${Date.now()}`,
+      affiliateId: aff.id,
+      affiliateName: aff.name,
+      affiliateCode: aff.code,
+      payoutMethod,
+      payoutAccount,
+      amount,
+      status: 'Pending',
+      requestedAt: new Date().toISOString()
+    };
+
+    setAffiliateWithdrawals((prev) => [newReq, ...prev]);
+    showToast(`Withdrawal request for ৳${amount} submitted! Locked from available balance.`, 'success');
+    return true;
+  };
+
+  const adminUpdateWithdrawal = (
+    id: string,
+    status: AffiliateWithdrawalStatus,
+    txnId?: string,
+    rejectReason?: string
+  ) => {
+    const item = affiliateWithdrawals.find((w) => w.id === id);
+    if (!item) return;
+
+    if (status === 'Paid') {
+      setAffiliates((prev) =>
+        prev.map((a) => (a.id === item.affiliateId ? { ...a, totalWithdrawn: a.totalWithdrawn + item.amount } : a))
+      );
+      if (currentAffiliate && currentAffiliate.id === item.affiliateId) {
+        setCurrentAffiliate({ ...currentAffiliate, totalWithdrawn: currentAffiliate.totalWithdrawn + item.amount });
+      }
+    } else if (status === 'Rejected') {
+      setAffiliates((prev) =>
+        prev.map((a) => (a.id === item.affiliateId ? { ...a, availableBalance: a.availableBalance + item.amount } : a))
+      );
+      if (currentAffiliate && currentAffiliate.id === item.affiliateId) {
+        setCurrentAffiliate({ ...currentAffiliate, availableBalance: currentAffiliate.availableBalance + item.amount });
+      }
+    }
+
+    setAffiliateWithdrawals((prev) =>
+      prev.map((w) =>
+        w.id === id
+          ? {
+              ...w,
+              status,
+              txnId: txnId || w.txnId,
+              rejectReason: rejectReason || w.rejectReason,
+              processedAt: new Date().toISOString()
+            }
+          : w
+      )
+    );
+    showToast(`Withdrawal #${id.slice(-6)} marked as ${status}`, 'success');
+  };
+
+  const adminToggleAffiliateStatus = (affiliateId: string) => {
+    setAffiliates((prev) =>
+      prev.map((a) => {
+        if (a.id === affiliateId) {
+          const next = a.status === 'Active' ? 'Suspended' : 'Active';
+          showToast(`Affiliate ${a.name} is now ${next}`, 'info');
+          return { ...a, status: next };
+        }
+        return a;
+      })
+    );
+  };
+
+  const adminUpdateAffiliateSettings = (newSettings: Partial<AffiliateSettings>) => {
+    setAffiliateSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      localStorage.setItem('quatro_affiliate_settings', JSON.stringify(updated));
+      return updated;
+    });
+    showToast('Affiliate commission & withdrawal settings updated!', 'success');
+  };
+
+  const adminCancelCommission = (commissionId: string, reason: string) => {
+    const match = affiliateCommissions.find((c) => c.id === commissionId);
+    if (!match) return;
+
+    if (match.status === 'Pending') {
+      setAffiliates((prev) =>
+        prev.map((a) =>
+          a.id === match.affiliateId
+            ? {
+                ...a,
+                pendingBalance: Math.max(0, a.pendingBalance - match.commissionAmount),
+                totalEarned: Math.max(0, a.totalEarned - match.commissionAmount)
+              }
+            : a
+        )
+      );
+    } else if (match.status === 'Approved') {
+      setAffiliates((prev) =>
+        prev.map((a) =>
+          a.id === match.affiliateId
+            ? {
+                ...a,
+                availableBalance: Math.max(0, a.availableBalance - match.commissionAmount),
+                totalEarned: Math.max(0, a.totalEarned - match.commissionAmount)
+              }
+            : a
+        )
+      );
+    }
+
+    setAffiliateCommissions((prev) =>
+      prev.map((c) => (c.id === commissionId ? { ...c, status: 'Cancelled' as const, daysLeft: 0 } : c))
+    );
+
+    const fraudAlert: AffiliateFraudAlert = {
+      id: `fraud-${Date.now()}`,
+      affiliateId: match.affiliateId,
+      affiliateName: match.affiliateCode,
+      type: 'HIGH_CANCEL_RATE',
+      severity: 'HIGH',
+      description: `Commission #${match.id.slice(-6)} manually cancelled by admin for fraud: ${reason}`,
+      timestamp: new Date().toISOString(),
+      resolved: false
+    };
+    setAffiliateFraudAlerts((prev) => [fraudAlert, ...prev]);
+    showToast(`Commission cancelled. Deducted ৳${match.commissionAmount} from affiliate.`, 'info');
+  };
+
+  const runAffiliateCommissionApprovalCron = (): number => {
+    let approvedCount = 0;
+    const now = Date.now();
+
+    setAffiliateCommissions((prevComms) => {
+      const nextComms = prevComms.map((c) => {
+        if (c.status === 'Pending') {
+          const maturityTime = new Date(c.approveAfter).getTime();
+          if (maturityTime <= now) {
+            approvedCount++;
+            setAffiliates((aList) =>
+              aList.map((a) =>
+                a.id === c.affiliateId
+                  ? {
+                      ...a,
+                      pendingBalance: Math.max(0, a.pendingBalance - c.commissionAmount),
+                      availableBalance: a.availableBalance + c.commissionAmount
+                    }
+                  : a
+              )
+            );
+            return {
+              ...c,
+              status: 'Approved' as const,
+              approvedAt: new Date().toISOString(),
+              daysLeft: 0
+            };
+          }
+        }
+        return c;
+      });
+      return nextComms;
+    });
+
+    if (approvedCount > 0) {
+      showToast(`Automated Cron Job: Approved ${approvedCount} mature commissions! Transferred to Available Balance.`, 'success');
+    } else {
+      showToast('Automated Cron Check: All pending commissions are within the 15-day verification period.', 'info');
+    }
+    return approvedCount;
+  };
+
   return (
     <MarketplaceContext.Provider
       value={{
@@ -2332,6 +3388,10 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         addCoupon,
         updateCoupon,
         deleteCoupon,
+        collectedVouchers,
+        collectVoucher,
+        isVoucherCollected,
+        addCustomerReviewWithPhoto,
         wishlist,
         toggleWishlist,
         isInWishlist,
@@ -2417,6 +3477,9 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         approveSeller,
         rejectSeller,
         suspendSeller,
+        submitSellerVerification,
+        approveSellerVerification,
+        rejectSellerVerification,
         approveWithdrawal,
         rejectWithdrawal,
         markNotificationAsRead,
@@ -2426,7 +3489,31 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         submitSellerDeposit,
         approveSellerDeposit,
         rejectSellerDeposit,
-        adjustSellerBalance
+        adjustSellerBalance,
+        transferToAdBalance,
+        // Affiliate System
+        affiliates,
+        currentAffiliate,
+        setCurrentAffiliate,
+        affiliateLinks,
+        affiliateClicks,
+        affiliateCommissions,
+        affiliateWithdrawals,
+        affiliateSettings,
+        affiliateFraudAlerts,
+        activeAffiliateCode,
+        setActiveAffiliateCode,
+        registerAffiliate,
+        loginAffiliate,
+        upgradeCustomerToAffiliate,
+        generateAffiliateLink,
+        recordAffiliateClick,
+        requestAffiliateWithdrawal,
+        adminUpdateWithdrawal,
+        adminToggleAffiliateStatus,
+        adminUpdateAffiliateSettings,
+        adminCancelCommission,
+        runAffiliateCommissionApprovalCron
       }}
     >
       {children}

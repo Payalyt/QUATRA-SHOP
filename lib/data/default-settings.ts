@@ -7,8 +7,75 @@ export const DEFAULT_SETTINGS: MarketplaceSettings = {
   supportEmail: 'support@bazaarbd.com',
   helplineNotice: '24/7 Helpline & Support across all 64 Districts',
   officeAddress: 'Level 6, Navana Tower, Gulshan 1, Dhaka-1212, Bangladesh',
+  // Seller Portal Branding
+  sellerPortalName: 'QUATRO Seller Center',
+  sellerPortalLogoUrl: 'https://i.postimg.cc/jjqqT7rs/QUATRO-wordmark-logo-design-2K-20260926210000.jpg',
+  sellerPortalHotline: '+880 9612-444888',
+  sellerPortalEmail: 'seller-support@quatro.com.bd',
+  sellerPortalBannerText: 'Start Selling on QUATRO & Reach 500,000+ Customers Across Bangladesh',
+  sellerStatBuyers: '10M+ Monthly Active Buyers',
+  sellerStatFee: '৳0 Fee (Free Registration)',
+  sellerStatPayout: '7 Days Guaranteed Payout Cycle',
+  sellerStatCommission: '0% Commission (First 30 Days)',
+  sellerStatDelivery: '64 Districts Nationwide Delivery Network',
+  // Onboarding Steps
+  sellerOnboardingStep1Title: '1. Register Your Shop',
+  sellerOnboardingStep1Desc: 'Fill out basic shop info, merchant phone number, and bKash / Nagad / Bank payout details in 2 minutes.',
+  sellerOnboardingStep2Title: '2. Upload Products',
+  sellerOnboardingStep2Desc: 'Add product photos, video demos, set your retail prices, and manage stock inventory directly.',
+  sellerOnboardingStep3Title: '3. Start Earning & Fast Payouts',
+  sellerOnboardingStep3Desc: 'Receive orders nationwide, dispatch via Steadfast/Pathao courier pickup, and get weekly payments to your account.',
+  // Value Propositions
+  sellerValueProp1Title: 'Guaranteed Weekly Payouts',
+  sellerValueProp1Desc: 'Receive guaranteed automatic payments every 7 days directly to your bKash, Nagad, Rocket, or Bank account.',
+  sellerValueProp2Title: '64 District Delivery Network',
+  sellerValueProp2Desc: 'Direct API handshake with Steadfast, Pathao & RedX for doorstep rider pickup and cash on delivery across Bangladesh.',
+  sellerValueProp3Title: 'Powerful Seller Analytics',
+  sellerValueProp3Desc: 'Real-time sales charts, income statements, campaign ROI analytics, and customer question response portal.',
+  sellerValueProp4Title: '24/7 Dedicated Support',
+  sellerValueProp4Desc: 'Direct access to our dedicated merchant helpline and priority WhatsApp support for any dispatch inquiries.',
+  // FAQs
+  sellerFaqs: [
+    {
+      q: 'How do I receive payments for my sales?',
+      a: 'Payments are calculated every week based on delivered orders and sent automatically to your selected bKash, Nagad, Rocket, or Bangladeshi Bank Account.'
+    },
+    {
+      q: 'Are there any upfront listing fees or hidden charges?',
+      a: 'No! Listing products on QUATRO is 100% free with 0 upfront cost. Platform commission is deducted only when you make a successful sale.'
+    },
+    {
+      q: 'How are orders delivered to customers across Bangladesh?',
+      a: 'QUATRO integrates directly with Steadfast Courier Express API (as well as Pathao & RedX). When an order is placed, you confirm it in the seller dashboard, get an instant Steadfast Consignment Tracking Code, print the dispatch memo, and the rider picks it up from your shop!'
+    },
+    {
+      q: 'Can I sell from anywhere in Bangladesh?',
+      a: 'Yes! Whether your store is in Dhaka, Chittagong, Sylhet, Rajshahi, or any other upazila, our courier partners will pick up packages right from your doorstep.'
+    }
+  ],
+  // Commission Table
+  sellerCategoryCommissions: [
+    { categoryName: 'Consumer Electronics & Gadgets', listingFee: '৳0 Free', commissionPercent: 4.5, payoutCycle: 'Weekly (Every Monday)' },
+    { categoryName: 'Fashion, Clothing & Apparel', listingFee: '৳0 Free', commissionPercent: 6.0, payoutCycle: 'Weekly (Every Monday)' },
+    { categoryName: 'Home, Living & Appliances', listingFee: '৳0 Free', commissionPercent: 5.0, payoutCycle: 'Weekly (Every Monday)' },
+    { categoryName: 'Beauty, Health & Personal Care', listingFee: '৳0 Free', commissionPercent: 5.5, payoutCycle: 'Weekly (Every Monday)' },
+    { categoryName: 'Sports, Fitness & Outdoor', listingFee: '৳0 Free', commissionPercent: 4.0, payoutCycle: 'Weekly (Every Monday)' }
+  ],
+  sellerEmpoweringStatement: 'Empowering 15,000+ local Bangladeshi entrepreneurs & digital brands to scale nationwide with zero barrier to entry.',
+  sellerLogisticsPartners: ['Steadfast Courier (Official API)', 'Pathao Express', 'RedX Logistics', 'Paperfly', 'Sundarban Courier', 'eCourier', 'DHL Express'],
+  sellerPaymentChannels: ['bKash Merchant & Personal', 'Nagad Direct', 'Rocket', 'Bank Asia / City Bank / EBL / Brac Bank Transfer'],
+  // Sub-Agent Portal Branding
+  subAgentPortalName: 'QUATRO Staff & Sub-Agent Portal',
+  subAgentPortalLogoUrl: 'https://i.postimg.cc/jjqqT7rs/QUATRO-wordmark-logo-design-2K-20260926210000.jpg',
+  subAgentPortalHotline: '16124',
+  subAgentPortalEmail: 'agent-support@quatro.com.bd',
   isAddToCartEnabled: true,
   isBuyNowEnabled: true,
+  isCodEnabled: true,
+  isOnlinePaymentEnabled: true,
+  isAutoPaymentEnabled: true,
+  isMerchantVerifyEnabled: false,
+  paymentEngineMode: 'manual_send_money',
   whatsappNumber: '+8801712345678',
   whatsappGreeting: 'Hello QUATRO! I want to inquire about a product or my order.',
   flashSaleHoursLeft: 11,
@@ -34,6 +101,16 @@ export const DEFAULT_SETTINGS: MarketplaceSettings = {
     merchantId: 'NAGAD_MCH_82910481',
     merchantNumber: '01922-334455',
     environment: 'sandbox'
+  },
+  sslcommerzConfig: {
+    storeId: 'testbox',
+    storePassword: 'qwerty',
+    environment: 'sandbox'
+  },
+  smsConfig: {
+    apiKey: '',
+    senderId: 'QUATRO',
+    provider: 'mim_sms'
   },
   footerLinks: [
     { label: 'About Us', url: '/about' },
@@ -203,38 +280,15 @@ export const DEFAULT_SUB_AGENTS = [
   }
 ];
 
-export const DEFAULT_LIVE_CHATS = [
-  {
-    id: 'chat-1',
-    customerName: 'Rayhan Ahmed',
-    customerPhone: '01712345678',
-    customerEmail: 'rayhan@bazaarbd.com',
-    message: 'Hello, is standard delivery available in Dhanmondi today?',
-    reply: 'Yes, Rayhan! Orders placed before 3 PM are dispatched for next-day hub delivery.',
-    repliedBy: 'Tanvir Hossain (Agent)',
-    repliedAt: '2026-10-02, 11:15 AM',
-    status: 'Resolved' as const,
-    timestamp: '2026-10-02, 11:02 AM'
-  },
-  {
-    id: 'chat-2',
-    customerName: 'Sabrina Mostafa',
-    customerPhone: '01911223344',
-    customerEmail: 'sabrina@gmail.com',
-    message: 'I paid via bKash TrxID 9J4K82LA. Has my payment been approved?',
-    status: 'Open' as const,
-    timestamp: '2026-10-02, 02:40 PM'
-  },
-  {
-    id: 'chat-3',
-    customerName: 'Kamrul Hasan',
-    customerPhone: '01855667788',
-    customerEmail: 'kamrul@yahoo.com',
-    message: 'Do you provide 7-day replacement warranty if the product size does not fit?',
-    reply: 'Yes, you can request an easy 7-day replacement from your order dashboard!',
-    repliedBy: 'Nusrat Jahan (Agent)',
-    repliedAt: '2026-10-02, 04:10 PM',
-    status: 'Resolved' as const,
-    timestamp: '2026-10-02, 03:55 PM'
-  }
-];
+export const DEFAULT_LIVE_CHATS: Array<{
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  message: string;
+  reply?: string;
+  repliedBy?: string;
+  repliedAt?: string;
+  status: 'Open' | 'Resolved';
+  timestamp: string;
+}> = [];

@@ -20,19 +20,20 @@ import {
   MapPin,
   ShoppingBag,
   Copy,
-  AlertCircle
+  AlertCircle,
+  Coins
 } from 'lucide-react';
 import { useMarketplace } from '@/lib/store/marketplace-store';
 import { fetchAllUsersFromFirestore, updateUserInFirestore, UnifiedUserData } from '@/lib/firebase/services';
 import { cleanQAId } from '@/lib/utils/id-generator';
 
 export const UnifiedUserManager: React.FC = () => {
-  const { showToast, formatPrice, sellers } = useMarketplace();
+  const { showToast, formatPrice, sellers, affiliates } = useMarketplace();
 
   const [usersList, setUsersList] = useState<UnifiedUserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedRoleTab, setSelectedRoleTab] = useState<'ALL' | 'CUSTOMER' | 'SELLER' | 'PENDING_SELLER'>('ALL');
+  const [selectedRoleTab, setSelectedRoleTab] = useState<'ALL' | 'CUSTOMER' | 'SELLER' | 'AFFILIATE' | 'PENDING_SELLER'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UnifiedUserData | null>(null);
 
@@ -75,6 +76,23 @@ export const UnifiedUserManager: React.FC = () => {
             payoutAccount: s.payoutAccount,
             status: s.status as any,
             createdAt: s.joinedDate || new Date().toISOString()
+          });
+        }
+      });
+
+      // Synchronize with active affiliates in marketplace store
+      affiliates.forEach((a) => {
+        if (!merged.some((m) => m.id === a.userId || m.email === a.email)) {
+          merged.push({
+            id: a.userId || `usr-aff-${a.id}`,
+            name: a.name,
+            email: a.email,
+            phone: a.phone,
+            role: 'AFFILIATE' as any,
+            payoutMethod: a.payoutMethod,
+            payoutAccount: a.payoutAccount,
+            status: a.status as any,
+            createdAt: a.createdAt || new Date().toISOString()
           });
         }
       });
@@ -182,6 +200,7 @@ export const UnifiedUserManager: React.FC = () => {
     // Role filter
     if (selectedRoleTab === 'CUSTOMER' && u.role !== 'CUSTOMER') return false;
     if (selectedRoleTab === 'SELLER' && u.role !== 'SELLER') return false;
+    if (selectedRoleTab === 'AFFILIATE' && (u.role as any) !== 'AFFILIATE') return false;
     if (selectedRoleTab === 'PENDING_SELLER' && (u.role !== 'SELLER' || u.status !== 'Pending')) {
       return false;
     }
@@ -202,6 +221,7 @@ export const UnifiedUserManager: React.FC = () => {
 
   const totalCustomers = usersList.filter((u) => u.role === 'CUSTOMER').length;
   const totalSellers = usersList.filter((u) => u.role === 'SELLER').length;
+  const totalAffiliates = usersList.filter((u) => (u.role as any) === 'AFFILIATE').length;
   const pendingSellers = usersList.filter(
     (u) => u.role === 'SELLER' && u.status === 'Pending'
   ).length;
@@ -223,13 +243,8 @@ export const UnifiedUserManager: React.FC = () => {
               </span>
             </div>
             <h3 className="font-black text-xl text-gray-900 mt-2">
-              Unified Users &amp; Sellers Directory (ব্যবহারকারী ও সেলার ডাটাবেস)
+              Users &amp; Sellers Directory
             </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              ফ্রন্টএন্ডের সাধারণ কাস্টমার এবং সেলার অ্যাকাউন্ট – উভয়ের বিস্তারিত তথ্য ফায়ারবেসের একটিই{' '}
-              <code className="text-[#0284c7] font-mono bg-sky-50 px-1 py-0.5 rounded border border-sky-200">users</code>{' '}
-              কালেকশন থেকে সরাসরি এডমিন প্যানেলে প্রদর্শিত হচ্ছে।
-            </p>
           </div>
 
           <button
@@ -243,7 +258,7 @@ export const UnifiedUserManager: React.FC = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-gray-100">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-gray-100">
           <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200">
             <span className="text-[11px] font-bold text-gray-500 block uppercase">
               Total Database Users
@@ -268,12 +283,20 @@ export const UnifiedUserManager: React.FC = () => {
             <span className="text-[10px] text-sky-600">Store owners</span>
           </div>
 
+          <div className="bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-200">
+            <span className="text-[11px] font-bold text-indigo-700 block uppercase">
+              Affiliates (10%)
+            </span>
+            <span className="text-xl font-black text-indigo-900 block mt-1">{totalAffiliates}</span>
+            <span className="text-[10px] text-indigo-600">Partner network</span>
+          </div>
+
           <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200">
             <span className="text-[11px] font-bold text-amber-700 block uppercase">
               Pending Sellers
             </span>
             <span className="text-xl font-black text-amber-900 block mt-1">{pendingSellers}</span>
-            <span className="text-[10px] text-amber-600">Awaiting Admin Approval</span>
+            <span className="text-[10px] text-amber-600">Awaiting Approval</span>
           </div>
         </div>
       </div>
@@ -311,6 +334,16 @@ export const UnifiedUserManager: React.FC = () => {
               }`}
             >
               Sellers ({totalSellers})
+            </button>
+            <button
+              onClick={() => setSelectedRoleTab('AFFILIATE')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                selectedRoleTab === 'AFFILIATE'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Affiliates ({totalAffiliates})
             </button>
             <button
               onClick={() => setSelectedRoleTab('PENDING_SELLER')}
@@ -354,134 +387,134 @@ export const UnifiedUserManager: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200">
-                  <th className="py-3 px-4">User &amp; Role</th>
-                  <th className="py-3 px-4">Contact Details</th>
-                  <th className="py-3 px-4">Account Type / Shop Details</th>
-                  <th className="py-3 px-4">Status &amp; Verification</th>
-                  <th className="py-3 px-4">Registered Date</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                <tr className="bg-gray-50/90 text-gray-600 font-bold uppercase tracking-wider text-[10.5px] border-b border-gray-200">
+                  <th className="py-3 px-3.5 whitespace-nowrap">User &amp; Role</th>
+                  <th className="py-3 px-3.5 whitespace-nowrap">Contact Details</th>
+                  <th className="py-3 px-3.5 whitespace-nowrap">Account Type / Shop Details</th>
+                  <th className="py-3 px-3.5 text-center whitespace-nowrap">Status &amp; Verification</th>
+                  <th className="py-3 px-3.5 whitespace-nowrap">Registered Date</th>
+                  <th className="py-3 px-3.5 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 font-medium text-gray-800 bg-white">
                 {filteredUsers.map((u) => {
                   const isSeller = u.role === 'SELLER';
+                  const isAffiliate = (u.role as any) === 'AFFILIATE';
                   return (
-                    <tr key={u.id} className="hover:bg-gray-50/70 transition-colors">
-                      {/* Name & Role */}
-                      <td className="py-3.5 px-4 align-top">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-gray-900 text-sm">{u.name}</span>
-                            <span
-                              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                                isSeller
-                                  ? 'bg-sky-100 text-sky-800 border border-sky-200'
-                                  : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                              }`}
-                            >
-                              {isSeller ? (
-                                <>
-                                  <Store className="w-2.5 h-2.5" />
-                                  <span>Seller</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Users className="w-2.5 h-2.5" />
-                                  <span>Customer</span>
-                                </>
-                              )}
-                            </span>
-                          </div>
+                    <tr key={u.id} className="hover:bg-sky-50/30 transition-colors">
+                      {/* Name & Role in ONE clean line */}
+                      <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-gray-900 text-xs">{u.name}</span>
+                          <span
+                            className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                              isSeller
+                                ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                                : isAffiliate
+                                ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            }`}
+                          >
+                            {isAffiliate ? (
+                              <>
+                                <Coins className="w-2.5 h-2.5 text-indigo-600" />
+                                <span>Affiliate</span>
+                              </>
+                            ) : isSeller ? (
+                              <>
+                                <Store className="w-2.5 h-2.5" />
+                                <span>Seller</span>
+                              </>
+                            ) : (
+                              <>
+                                <Users className="w-2.5 h-2.5" />
+                                <span>Customer</span>
+                              </>
+                            )}
+                          </span>
 
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono text-xs font-bold text-sky-900 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                              <span className="text-[10px] text-sky-600 font-sans font-black uppercase">
-                                ID:
-                              </span>
-                              <span>{cleanQAId(u.customerId || u.sellerIdNumber || u.id)}</span>
-                            </span>
+                          <span className="font-mono text-[10.5px] font-bold text-sky-900 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                            <span>ID: {cleanQAId(u.customerId || u.sellerIdNumber || u.id)}</span>
                             <button
                               onClick={() => copyToClipboard(cleanQAId(u.customerId || u.sellerIdNumber || u.id))}
                               className="text-gray-400 hover:text-sky-600 cursor-pointer p-0.5 transition-colors"
                               title="Copy 8-Digit ID"
                             >
-                              <Copy className="w-3 h-3" />
+                              <Copy className="w-2.5 h-2.5" />
                             </button>
-                          </div>
+                          </span>
                         </div>
                       </td>
 
-                      {/* Contact Info */}
-                      <td className="py-3.5 px-4 align-top space-y-1">
-                        <div className="flex items-center gap-1.5 text-gray-800 font-semibold">
-                          <Mail className="w-3 h-3 text-gray-400 shrink-0" />
-                          <span className="truncate max-w-[180px]">{u.email}</span>
+                      {/* Contact Info: Phone & Email in ONE single line */}
+                      <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-gray-800 font-semibold bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                            <Phone className="w-3 h-3 text-[#0284c7] shrink-0" />
+                            <span>{u.phone || 'N/A'}</span>
+                            {u.phone && (
+                              <a
+                                href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-600 hover:text-emerald-700 ml-0.5"
+                                title="Message on WhatsApp"
+                              >
+                                💬
+                              </a>
+                            )}
+                          </span>
+                          <span className="text-gray-300">•</span>
+                          <span className="inline-flex items-center gap-1 text-gray-600 font-medium bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                            <Mail className="w-3 h-3 text-gray-400 shrink-0" />
+                            <span>{u.email || 'N/A'}</span>
+                          </span>
                         </div>
-                        {u.phone && (
-                          <div className="flex items-center gap-2 text-gray-600 font-mono text-[11px]">
-                            <Phone className="w-3 h-3 text-gray-400 shrink-0" />
-                            <span>{u.phone}</span>
-                            <a
-                              href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-emerald-600 hover:text-emerald-700"
-                              title="Message on WhatsApp"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </a>
-                          </div>
-                        )}
                       </td>
 
-                      {/* Specific Details */}
-                      <td className="py-3.5 px-4 align-top">
-                        {isSeller ? (
-                          <div className="space-y-1">
-                            <div className="font-extrabold text-gray-900 text-xs flex items-center gap-1">
-                              <Building className="w-3 h-3 text-sky-600" />
-                              <span>{u.shopName || 'Shop Account'}</span>
-                            </div>
-                            {u.payoutMethod && (
-                              <div className="text-[11px] text-gray-500 flex items-center gap-1">
-                                <CreditCard className="w-3 h-3 text-gray-400" />
-                                <span>
-                                  {u.payoutMethod}: {u.payoutAccount}
-                                </span>
-                              </div>
-                            )}
-                            {u.nidTradeLicense && (
-                              <div className="text-[10px] text-gray-400 font-mono">
-                                Doc: {u.nidTradeLicense}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            <div className="text-gray-700 text-xs flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
-                              <span className="truncate max-w-[200px]">
-                                {u.shippingAddress || 'Dhaka, Bangladesh'}
+                      {/* Specific Details in ONE single line */}
+                      <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          {isSeller ? (
+                            <>
+                              <span className="font-extrabold text-gray-900 inline-flex items-center gap-1 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                                <Building className="w-3 h-3 text-sky-600 shrink-0" />
+                                <span>{u.shopName || 'Shop'}</span>
                               </span>
-                            </div>
-                            <div className="text-[11px] text-gray-500 font-medium">
-                              Orders: <strong>{u.ordersCount || 0}</strong> • Total Spent:{' '}
-                              <strong>{formatPrice(u.totalSpent || 0)}</strong>
-                            </div>
-                          </div>
-                        )}
+                              {u.payoutMethod && (
+                                <span className="text-gray-600 inline-flex items-center gap-1 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-medium">
+                                  <CreditCard className="w-3 h-3 text-gray-400" />
+                                  <span>
+                                    {u.payoutMethod}: {u.payoutAccount}
+                                  </span>
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-gray-700 inline-flex items-center gap-1 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
+                                <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+                                <span className="truncate max-w-[150px]">
+                                  {u.shippingAddress || 'Dhaka, BD'}
+                                </span>
+                              </span>
+                              <span className="text-gray-600 inline-flex items-center gap-1 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-medium">
+                                Orders: <strong>{u.ordersCount || 0}</strong> ({formatPrice(u.totalSpent || 0)})
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </td>
 
                       {/* Status */}
-                      <td className="py-3.5 px-4 align-top">
+                      <td className="py-3 px-3.5 align-middle text-center whitespace-nowrap">
                         <span
                           className={`text-[10.5px] font-black uppercase px-2.5 py-1 rounded-full inline-flex items-center gap-1 ${
                             u.status === 'Approved' || u.status === 'Active'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                               : u.status === 'Pending'
-                              ? 'bg-amber-100 text-amber-800 animate-pulse'
-                              : 'bg-red-100 text-red-800'
+                              ? 'bg-amber-100 text-amber-800 animate-pulse border border-amber-200'
+                              : 'bg-red-100 text-red-800 border border-red-200'
                           }`}
                         >
                           {u.status === 'Approved' || u.status === 'Active' ? (
@@ -496,19 +529,19 @@ export const UnifiedUserManager: React.FC = () => {
                       </td>
 
                       {/* Created Date */}
-                      <td className="py-3.5 px-4 align-top text-gray-500 text-[11px] whitespace-nowrap">
+                      <td className="py-3.5 px-3.5 align-middle text-gray-500 text-[11px] whitespace-nowrap">
                         {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB') : 'Recently'}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-4 align-top text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-3 px-3.5 align-middle text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
                           <button
                             onClick={() => setSelectedUser(u)}
-                            className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-[#0284c7] font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                            className="h-7 px-2.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-[#0284c7] font-bold text-[10.5px] inline-flex items-center gap-1 transition-colors cursor-pointer border border-sky-200"
                             title="View Full User Profile"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3 h-3" />
                             <span>Details</span>
                           </button>
 
@@ -516,9 +549,10 @@ export const UnifiedUserManager: React.FC = () => {
                           {isSeller && u.status === 'Pending' && (
                             <button
                               onClick={() => handleUpdateStatus(u.id, 'Approved')}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs cursor-pointer"
+                              className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10.5px] shadow-2xs cursor-pointer inline-flex items-center gap-1 transition-all active:scale-95"
                             >
-                              Approve
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Approve</span>
                             </button>
                           )}
 
@@ -526,7 +560,7 @@ export const UnifiedUserManager: React.FC = () => {
                           {u.status === 'Suspended' ? (
                             <button
                               onClick={() => handleUpdateStatus(u.id, isSeller ? 'Approved' : 'Active')}
-                              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold cursor-pointer"
+                              className="h-7 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10.5px] font-bold cursor-pointer border border-emerald-200 inline-flex items-center transition-all"
                               title="Activate Account"
                             >
                               Activate
@@ -534,7 +568,7 @@ export const UnifiedUserManager: React.FC = () => {
                           ) : (
                             <button
                               onClick={() => handleUpdateStatus(u.id, 'Suspended')}
-                              className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold cursor-pointer"
+                              className="h-7 px-2.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-[10.5px] font-bold cursor-pointer border border-red-200 inline-flex items-center transition-all"
                               title="Suspend User"
                             >
                               Suspend

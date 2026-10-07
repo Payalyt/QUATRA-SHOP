@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useMarketplace } from '@/lib/store/marketplace-store';
-import { Smartphone, HelpCircle, Store, Truck, ShieldCheck, User as UserIcon, Globe, ChevronDown, LogOut } from 'lucide-react';
+import { Smartphone, HelpCircle, Store, Truck, ShieldCheck, User as UserIcon, Globe, ChevronDown, LogOut, Coins } from 'lucide-react';
 
 export const TopBar: React.FC<{ onOpenMyOrders: () => void }> = ({ onOpenMyOrders }) => {
   const {
@@ -49,10 +49,19 @@ export const TopBar: React.FC<{ onOpenMyOrders: () => void }> = ({ onOpenMyOrder
           <span className="text-gray-300 hidden md:inline">|</span>
           <Link
             href="/sell"
-            className="flex items-center gap-1 hover:text-[#0284c7] transition-colors hidden md:flex font-medium text-emerald-700"
+            className="flex items-center gap-1 hover:text-[#0284c7] transition-colors hidden md:flex font-semibold text-emerald-700"
           >
             <Store className="w-3.5 h-3.5" />
-            <span>{t('sellOnUs')} (Sell on QUATRO)</span>
+            <span>Become a Seller</span>
+          </Link>
+          <span className="text-gray-300 hidden md:inline">|</span>
+          <Link
+            href="/affiliate"
+            className="flex items-center gap-1.5 hover:text-[#ea580c] transition-colors font-bold text-[#f85606] bg-orange-50/80 px-2 py-0.5 rounded-md border border-orange-200/60"
+            title="Earn 10% commission on product referrals"
+          >
+            <Coins className="w-3.5 h-3.5 text-[#f85606]" />
+            <span>Earn Money / Affiliate (10%)</span>
           </Link>
         </div>
 

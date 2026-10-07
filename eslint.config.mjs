@@ -13,6 +13,11 @@ const eslintConfig = [
   {
     ignores: [".next/*", "node_modules/*", "next-env.d.ts"],
   },
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: "off"
+    }
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {

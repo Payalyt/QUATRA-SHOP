@@ -181,12 +181,9 @@ export default function AdminFinancialDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header Description */}
+      {/* Header */}
       <div>
-        <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Daraz-Style Automatic Commission System</h2>
-        <p className="text-xs text-gray-500">
-          Automatic commissions are deducted dynamically when order is set to <strong>Delivered</strong>: 5% Electronics, 12% Fashion, 10% Others.
-        </p>
+        <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Marketplace Commissions &amp; Financials</h2>
       </div>
 
       {/* Stats Cards */}
@@ -285,10 +282,7 @@ export default function AdminFinancialDashboard() {
       <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-2xs space-y-4">
         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
           <div>
-            <h3 className="font-extrabold text-sm text-gray-900">Daraz-Style Category Commission Rates (ক্যাটাগরি কমিশন রেট)</h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              এখানে অ্যাডমিন প্রতিটি ক্যাটাগরির জন্য কমিশন (%) লাইভ পরিবর্তন ও সেভ করতে পারবেন।
-            </p>
+            <h3 className="font-extrabold text-sm text-gray-900">Category Commission Rates</h3>
           </div>
           <span className="text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg">
             Firestore Sync Active

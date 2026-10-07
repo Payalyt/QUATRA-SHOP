@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useMarketplace } from '@/lib/store/marketplace-store';
 import { useRouter } from 'next/navigation';
 import { Store, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { SellerRegisterModal } from '@/components/Seller/SellerRegisterModal';
 
 export default function SellerLoginPage() {
   const { sellerLogin, showToast } = useMarketplace();
@@ -12,6 +13,7 @@ export default function SellerLoginPage() {
   const [email, setEmail] = useState('seller@apexbd.com');
   const [password, setPassword] = useState('seller123');
   const [error, setError] = useState('');
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,11 +86,20 @@ export default function SellerLoginPage() {
 
         <div className="pt-4 border-t border-gray-100 text-center text-xs">
           <span className="text-gray-500">Don&apos;t have a seller account? </span>
-          <a href="/seller/register" className="text-[#0284c7] font-extrabold hover:underline">
+          <button
+            onClick={() => setIsRegisterOpen(true)}
+            className="text-[#0284c7] font-extrabold hover:underline cursor-pointer"
+          >
             Register New Shop →
-          </a>
+          </button>
         </div>
       </div>
+
+      <SellerRegisterModal
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        onSuccess={() => router.push('/seller')}
+      />
     </div>
   );
 }

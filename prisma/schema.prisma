@@ -21,6 +21,7 @@ enum Role {
   CUSTOMER
   ADMIN
   SELLER
+  AFFILIATE
 }
 
 enum OrderStatus {
@@ -249,9 +250,11 @@ model Order {
   notes              String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+  affiliateId        String?
 
   user               User          @relation(fields: [userId], references: [id])
   address            Address?      @relation(fields: [addressId], references: [id])
+  affiliate          Affiliate?    @relation(fields: [affiliateId], references: [id])
   items              OrderItem[]
 
   @@index([userId])
@@ -494,4 +497,91 @@ model SellerPromotion {
 
   @@index([sellerId])
   @@map("seller_promotions")
+}
+
+enum AffiliateStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+model Affiliate {
+  id                String            @id @default(cuid())
+  userId            String            @unique
+  code              String            @unique
+  status            AffiliateStatus   @default(ACTIVE)
+  payoutMethod      PayoutMethod
+  payoutAccount     String
+  availableBalance  Float             @default(0.0)
+  pendingBalance    Float             @default(0.0)
+  totalEarned       Float             @default(0.0)
+  totalWithdrawn    Float             @default(0.0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links             AffiliateLink[]
+  commissions       AffiliateCommission[]
+  withdrawals       AffiliateWithdrawal[]
+
+  @@map("affiliates")
+}
+
+model AffiliateLink {
+  id          String   @id @default(cuid())
+  affiliateId String
+  productId   String
+  slug        String
+  createdAt   DateTime @default(now())
+
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("affiliate_links")
+}
+
+model AffiliateClick {
+  id          String   @id @default(cuid())
+  affiliateId String
+  productId   String
+  timestamp   DateTime @default(now())
+  ipHash      String
+  device      String?
+  createdAt   DateTime @default(now())
+
+  @@map("affiliate_clicks")
+}
+
+model AffiliateCommission {
+  id          String   @id @default(cuid())
+  affiliateId String
+  orderId     String
+  productId   String
+  amount      Float
+  rate        Float
+  status      String   @default("PENDING")
+  approveAfter DateTime
+  approvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  order       Order     @relation(fields: [orderId], references: [id])
+  product     Product   @relation(fields: [productId], references: [id])
+
+  @@map("affiliate_commissions")
+}
+
+model AffiliateWithdrawal {
+  id          String   @id @default(cuid())
+  affiliateId String
+  amount      Float
+  status      String   @default("PENDING")
+  rejectReason String?
+  requestedAt DateTime @default(now())
+  processedAt DateTime?
+  txnId       String?
+
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@map("affiliate_withdrawals")
 }

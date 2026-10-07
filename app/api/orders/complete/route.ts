@@ -27,9 +27,10 @@ export async function POST(req: NextRequest) {
 
     // Attempt Firestore Transaction
     try {
-      if (adminDb) {
-        resultSummary = await adminDb.runTransaction(async (transaction) => {
-        const orderRef = adminDb.collection('orders').doc(orderId);
+      const db = adminDb;
+      if (db) {
+        resultSummary = await db.runTransaction(async (transaction) => {
+        const orderRef = db.collection('orders').doc(orderId);
         const orderDoc = await transaction.get(orderRef);
 
         const categoryIds = Array.from(
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
 
         const categoryCommissionMap: Record<string, number> = {};
         for (const catId of categoryIds) {
-          const catRef = adminDb.collection('categories').doc(catId);
+          const catRef = db.collection('categories').doc(catId);
           const catDoc = await transaction.get(catRef);
           if (catDoc.exists) {
             const catData = catDoc.data();

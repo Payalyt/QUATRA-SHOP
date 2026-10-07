@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMarketplace } from '@/lib/store/marketplace-store';
-import { Product, OrderStatus, GatewayAccountType, PaymentGatewayConfig } from '@/lib/types/ecommerce';
+import { Product, OrderStatus, GatewayAccountType, PaymentGatewayConfig, Order } from '@/lib/types/ecommerce';
 import {
   LayoutDashboard,
   Package,
@@ -42,7 +42,14 @@ import {
   UserCheck,
   Shield,
   Key,
-  LogOut
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Coins,
+  ShieldAlert
 } from 'lucide-react';
 import { FooterLinksManager } from './FooterLinksManager';
 import { FooterFeaturesManager } from './FooterFeaturesManager';
@@ -50,6 +57,8 @@ import { DeliveryPartnerManager } from './DeliveryPartnerManager';
 import { SellerManager } from './SellerManager';
 import AdminFinancialDashboard from './AdminFinancialDashboard';
 import { UnifiedUserManager } from './UnifiedUserManager';
+import { AdminAffiliateManager } from './AdminAffiliateManager';
+import { CourierDispatchModal } from '@/components/Orders/CourierDispatchModal';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -104,8 +113,11 @@ export const AdminDashboard: React.FC = () => {
   } = useMarketplace();
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'products' | 'categories' | 'flashsale' | 'coupons' | 'banners' | 'gateways' | 'orders' | 'reviews' | 'settings' | 'leads' | 'subagents' | 'livechat' | 'sellers' | 'financials' | 'users'
+    'overview' | 'products' | 'categories' | 'flashsale' | 'coupons' | 'banners' | 'gateways' | 'orders' | 'reviews' | 'settings' | 'leads' | 'subagents' | 'livechat' | 'sellers' | 'financials' | 'users' | 'affiliates'
   >('overview');
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isTopActionsOpen, setIsTopActionsOpen] = useState(false);
 
   const [manualSubAgentOverride, setManualSubAgentOverride] = useState<boolean | null>(null);
   const isSubAgent = manualSubAgentOverride !== null ? manualSubAgentOverride : Boolean(currentSubAgent);
@@ -113,6 +125,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [productSearch, setProductSearch] = useState('');
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [dispatchingOrder, setDispatchingOrder] = useState<Order | null>(null);
 
   // New product form state
   const [newTitle, setNewTitle] = useState('');
@@ -175,6 +188,108 @@ export const AdminDashboard: React.FC = () => {
   const [privacyPolicy, setPrivacyPolicy] = useState(settings.privacyPolicyContent || '');
   const [terms, setTerms] = useState(settings.termsConditionsContent || '');
   const [careers, setCareers] = useState(settings.careersContent || '');
+
+  // Seller Portal Branding State
+  const [sellerName, setSellerName] = useState(settings.sellerPortalName || 'QUATRO Seller Center');
+  const [sellerLogoUrl, setSellerLogoUrl] = useState(settings.sellerPortalLogoUrl || '');
+  const [sellerHotline, setSellerHotline] = useState(settings.sellerPortalHotline || '+880 9612-444888');
+  const [sellerEmail, setSellerEmail] = useState(settings.sellerPortalEmail || 'seller-support@quatro.com.bd');
+  const [sellerBannerText, setSellerBannerText] = useState(settings.sellerPortalBannerText || 'Grow Your Business Across All 64 Districts of Bangladesh');
+  const [sellerStatBuyers, setSellerStatBuyers] = useState(settings.sellerStatBuyers || '10M+ Monthly Active Buyers');
+  const [sellerStatFee, setSellerStatFee] = useState(settings.sellerStatFee || '৳0 Fee (Free Registration)');
+  const [sellerStatPayout, setSellerStatPayout] = useState(settings.sellerStatPayout || '7 Days Guaranteed Payout Cycle');
+
+  // Seller Dynamic Onboarding Steps
+  const [sellerOnboardingStep1Title, setSellerOnboardingStep1Title] = useState(settings.sellerOnboardingStep1Title || '1. Register Your Shop');
+  const [sellerOnboardingStep1Desc, setSellerOnboardingStep1Desc] = useState(settings.sellerOnboardingStep1Desc || 'Provide your shop name, owner contact details, address, and payout account (bKash, Nagad, or Bank). Your request is verified within hours.');
+  const [sellerOnboardingStep2Title, setSellerOnboardingStep2Title] = useState(settings.sellerOnboardingStep2Title || '2. Upload Products');
+  const [sellerOnboardingStep2Desc, setSellerOnboardingStep2Desc] = useState(settings.sellerOnboardingStep2Desc || 'Add titles, multiple images, video preview, prices, discount offers, stock quantities, and variants using our compact Seller Center dashboard.');
+  const [sellerOnboardingStep3Title, setSellerOnboardingStep3Title] = useState(settings.sellerOnboardingStep3Title || '3. Start Earning & Payouts');
+  const [sellerOnboardingStep3Desc, setSellerOnboardingStep3Desc] = useState(settings.sellerOnboardingStep3Desc || 'Receive orders from buyers nationwide. Pack items, hand over to courier agents, and withdraw net earnings directly to your mobile bank account!');
+
+  // Seller Dynamic Value Propositions
+  const [sellerValueProp1Title, setSellerValueProp1Title] = useState(settings.sellerValueProp1Title || 'Guaranteed Weekly Payouts');
+  const [sellerValueProp1Desc, setSellerValueProp1Desc] = useState(settings.sellerValueProp1Desc || 'Withdraw your earnings hassle-free directly to bKash, Nagad, or any Bangladeshi bank.');
+  const [sellerValueProp2Title, setSellerValueProp2Title] = useState(settings.sellerValueProp2Title || '64 District Delivery Network');
+  const [sellerValueProp2Desc, setSellerValueProp2Desc] = useState(settings.sellerValueProp2Desc || 'Integrated courier pickup agents collect parcels directly from your shop or warehouse.');
+  const [sellerValueProp3Title, setSellerValueProp3Title] = useState(settings.sellerValueProp3Title || 'Powerful Seller Analytics');
+  const [sellerValueProp3Desc, setSellerValueProp3Desc] = useState(settings.sellerValueProp3Desc || 'Track total pieces sold, net income, top products, low stock alerts, and CSV sales reports.');
+  const [sellerValueProp4Title, setSellerValueProp4Title] = useState(settings.sellerValueProp4Title || '24/7 Merchant Support');
+  const [sellerValueProp4Desc, setSellerValueProp4Desc] = useState(settings.sellerValueProp4Desc || 'Dedicated key account managers and WhatsApp hotline to assist you with sales growth.');
+
+  // Seller Commission Rates Table & FAQs
+  const [sellerCommissionsList, setSellerCommissionsList] = useState(
+    settings.sellerCategoryCommissions && settings.sellerCategoryCommissions.length > 0
+      ? settings.sellerCategoryCommissions
+      : [
+          { categoryName: 'Consumer Electronics & Gadgets', listingFee: 'FREE (৳0)', commissionPercent: 5.0, payoutCycle: 'Weekly (Every Monday)' },
+          { categoryName: 'Fashion & Apparel', listingFee: 'FREE (৳0)', commissionPercent: 8.0, payoutCycle: 'Weekly (Every Monday)' },
+          { categoryName: 'Health & Beauty', listingFee: 'FREE (৳0)', commissionPercent: 6.0, payoutCycle: 'Weekly (Every Monday)' },
+          { categoryName: 'Home & Kitchen Essentials', listingFee: 'FREE (৳0)', commissionPercent: 7.0, payoutCycle: 'Weekly (Every Monday)' },
+          { categoryName: 'Groceries & Daily Mart', listingFee: 'FREE (৳0)', commissionPercent: 4.0, payoutCycle: 'Weekly (Every Monday)' }
+        ]
+  );
+
+  const [sellerFaqsList, setSellerFaqsList] = useState(
+    settings.sellerFaqs && settings.sellerFaqs.length > 0
+      ? settings.sellerFaqs
+      : [
+          {
+            q: 'How long does the seller approval process take?',
+            a: 'After submitting your registration form with shop name, owner details, and payout method, our merchant verification team reviews it within 2 to 6 hours. You will receive an immediate notification once approved.'
+          },
+          {
+            q: 'What documents or credentials do I need to register?',
+            a: 'You only need a valid Bangladeshi phone number, email address, shop location, and a bKash, Nagad, or Bank account for payouts. NID or Trade License is optional but speeds up verification.'
+          },
+          {
+            q: 'When and how do I receive payments for sold items?',
+            a: 'Funds become available 7 days after the customer receives the item (matching our 7-day return policy). You can request withdrawals anytime via bKash, Nagad, or direct Bank transfer with minimum payout threshold of ৳500.'
+          },
+          {
+            q: 'Are there any upfront listing fees or hidden charges?',
+            a: 'No! Listing products on QUATRO is 100% free with 0 upfront cost. Platform commission is deducted only when you make a successful sale.'
+          },
+          {
+            q: 'How are orders delivered to customers across Bangladesh?',
+            a: 'QUATRO integrates directly with Steadfast Courier Express API (as well as Pathao & RedX). When an order is placed, you confirm it in the seller dashboard, get an instant Steadfast Consignment Tracking Code, print the dispatch memo, and the rider picks it up from your shop!'
+          }
+        ]
+  );
+
+  const [sellerEmpoweringStatement, setSellerEmpoweringStatement] = useState(
+    settings.sellerEmpoweringStatement || 'Empowering 15,000+ local sellers, MSMEs and brands across all 64 districts in Bangladesh with cutting-edge technology, instant payouts and national logistics.'
+  );
+
+  const [sellerLogisticsPartnersStr, setSellerLogisticsPartnersStr] = useState(
+    (settings.sellerLogisticsPartners && settings.sellerLogisticsPartners.length > 0
+      ? settings.sellerLogisticsPartners
+      : ['Steadfast Express API (Integrated 24h)', 'Pathao Express Nationwide', 'RedX & Paperfly Doorstep Pickup', 'Automatic Consignment Tracking Codes']
+    ).join(', ')
+  );
+
+  const [sellerPaymentChannelsStr, setSellerPaymentChannelsStr] = useState(
+    (settings.sellerPaymentChannels && settings.sellerPaymentChannels.length > 0
+      ? settings.sellerPaymentChannels
+      : ['Weekly Automated Settlements', 'Direct bKash Merchant / Personal Payouts', 'Nagad & Rocket Instant Transfer', 'BEFTN / NPSB Direct Bank Transfer']
+    ).join(', ')
+  );
+
+  // New Commission Form State
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newListingFee, setNewListingFee] = useState('FREE (৳0)');
+  const [newCommissionPercent, setNewCommissionPercent] = useState('5.0');
+  const [newPayoutCycle, setNewPayoutCycle] = useState('Weekly (Every Monday)');
+
+  // New FAQ Form State
+  const [newFaqQ, setNewFaqQ] = useState('');
+  const [newFaqA, setNewFaqA] = useState('');
+
+  // Sub-Agent Portal Branding State
+  const [subAgentPortalTitle, setSubAgentPortalTitle] = useState(settings.subAgentPortalName || 'QUATRO Staff & Sub-Agent Portal');
+  const [subAgentPortalLogo, setSubAgentPortalLogo] = useState(settings.subAgentPortalLogoUrl || '');
+  const [subAgentHotline, setSubAgentHotline] = useState(settings.subAgentPortalHotline || '16124');
+  const [subAgentEmail, setSubAgentEmail] = useState(settings.subAgentPortalEmail || 'agent-support@quatro.com.bd');
 
   // Tracking updater state
   const [trackingModalOrder, setTrackingModalOrder] = useState<string | null>(null);
@@ -320,7 +435,6 @@ export const AdminDashboard: React.FC = () => {
     const generatedCatId = `cat-${catName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
     addCategory({
-      id: generatedCatId,
       name: catName,
       nameBn: catNameBn,
       iconName: catIcon,
@@ -722,12 +836,92 @@ export const AdminDashboard: React.FC = () => {
       flashSaleMinutesLeft: parseInt(flashMinutes) || 0,
       codInstructions: storeCodInstructions,
       siteLogoUrl: storeLogoUrl,
+      sellerPortalName: sellerName,
+      sellerPortalLogoUrl: sellerLogoUrl,
+      sellerPortalHotline: sellerHotline,
+      sellerPortalEmail: sellerEmail,
+      sellerPortalBannerText: sellerBannerText,
+      sellerStatBuyers: sellerStatBuyers,
+      sellerStatFee: sellerStatFee,
+      sellerStatPayout: sellerStatPayout,
+      sellerOnboardingStep1Title,
+      sellerOnboardingStep1Desc,
+      sellerOnboardingStep2Title,
+      sellerOnboardingStep2Desc,
+      sellerOnboardingStep3Title,
+      sellerOnboardingStep3Desc,
+      sellerValueProp1Title,
+      sellerValueProp1Desc,
+      sellerValueProp2Title,
+      sellerValueProp2Desc,
+      sellerValueProp3Title,
+      sellerValueProp3Desc,
+      sellerValueProp4Title,
+      sellerValueProp4Desc,
+      sellerCategoryCommissions: sellerCommissionsList,
+      sellerFaqs: sellerFaqsList,
+      sellerEmpoweringStatement,
+      sellerLogisticsPartners: sellerLogisticsPartnersStr.split(',').map((s) => s.trim()).filter(Boolean),
+      sellerPaymentChannels: sellerPaymentChannelsStr.split(',').map((s) => s.trim()).filter(Boolean),
+      subAgentPortalName: subAgentPortalTitle,
+      subAgentPortalLogoUrl: subAgentPortalLogo,
+      subAgentPortalHotline: subAgentHotline,
+      subAgentPortalEmail: subAgentEmail,
       aboutUsContent: aboutUs,
       privacyPolicyContent: privacyPolicy,
       termsConditionsContent: terms,
       careersContent: careers
     });
-    showToast('Settings & WhatsApp number saved successfully!', 'success');
+    showToast('Store, Seller Center & Sub-Agent Portal settings saved successfully!', 'success');
+  };
+
+  const handleAddCommission = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) {
+      showToast('Category name is required', 'error');
+      return;
+    }
+    const updated = [
+      ...sellerCommissionsList,
+      {
+        categoryName: newCategoryName.trim(),
+        listingFee: newListingFee.trim() || 'FREE (৳0)',
+        commissionPercent: parseFloat(newCommissionPercent) || 5.0,
+        payoutCycle: newPayoutCycle.trim() || 'Weekly (Every Monday)'
+      }
+    ];
+    setSellerCommissionsList(updated);
+    updateSettings({ sellerCategoryCommissions: updated });
+    setNewCategoryName('');
+    showToast('Category commission rate added successfully!', 'success');
+  };
+
+  const handleDeleteCommission = (index: number) => {
+    const updated = sellerCommissionsList.filter((_, idx) => idx !== index);
+    setSellerCommissionsList(updated);
+    updateSettings({ sellerCategoryCommissions: updated });
+    showToast('Commission row removed', 'info');
+  };
+
+  const handleAddFaq = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFaqQ.trim() || !newFaqA.trim()) {
+      showToast('Both Question and Answer are required', 'error');
+      return;
+    }
+    const updated = [...sellerFaqsList, { q: newFaqQ.trim(), a: newFaqA.trim() }];
+    setSellerFaqsList(updated);
+    updateSettings({ sellerFaqs: updated });
+    setNewFaqQ('');
+    setNewFaqA('');
+    showToast('Seller FAQ added successfully!', 'success');
+  };
+
+  const handleDeleteFaq = (index: number) => {
+    const updated = sellerFaqsList.filter((_, idx) => idx !== index);
+    setSellerFaqsList(updated);
+    updateSettings({ sellerFaqs: updated });
+    showToast('FAQ removed', 'info');
   };
 
   const handleRestock = (productId: string) => {
@@ -751,19 +945,23 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f8f9fa] pb-12 font-sans">
       {/* Top Admin Bar */}
-      <div className="bg-[#0284c7] text-white border-b border-sky-700">
-        <div className="max-w-[1240px] mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="bg-[#0284c7] text-white border-b border-sky-700 shadow-xs relative">
+        <div className="max-w-[1240px] mx-auto px-4 py-2.5 flex items-center justify-between">
+          {/* Brand Name Title: QUATRO Admin */}
           <div className="flex items-center gap-2">
-            <span className="bg-[#0284c7] text-white px-2 py-0.5 rounded font-black text-xs uppercase">
-              Admin Portal
-            </span>
-            <h1 className="font-bold text-base sm:text-lg">QUATRO Marketplace Central</h1>
+            <div className="w-8 h-8 rounded-xl bg-white/15 text-white flex items-center justify-center font-black">
+              <Shield className="w-4 h-4 text-sky-100" />
+            </div>
+            <h1 className="font-black text-base sm:text-lg tracking-wide uppercase text-white">
+              QUATRO Admin
+            </h1>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Desktop Right Buttons (hidden on mobile) */}
+          <div className="hidden md:flex md:items-center gap-2.5">
             {/* Role selector dropdown */}
-            <div className="flex items-center gap-1.5 bg-gray-800 p-1.5 rounded-lg border border-gray-750">
-              <span className="text-[11px] text-gray-400 font-extrabold hidden md:inline ml-1">Access Role:</span>
+            <div className="flex items-center gap-1.5 bg-sky-900/60 px-2 py-1.5 rounded-xl border border-sky-600/50">
+              <span className="text-[11px] text-sky-200 font-extrabold ml-1">Access:</span>
               <select
                 value={isSubAgent ? 'subagent' : 'admin'}
                 onChange={(e) => {
@@ -774,7 +972,7 @@ export const AdminDashboard: React.FC = () => {
                   }
                   showToast(next ? 'Switched to Sub-Agent Role (Moderation-only)' : 'Switched to Super Admin (Full Access)', 'info');
                 }}
-                className="bg-gray-900 text-white text-[11px] font-black py-1 px-2.5 rounded-md cursor-pointer outline-none border border-transparent focus:border-[#0284c7]"
+                className="bg-sky-950 text-white text-[11px] font-black py-1 px-2.5 rounded-lg cursor-pointer outline-none border border-sky-700/60 focus:border-white"
               >
                 <option value="admin">Super Admin (Full Access) 👑</option>
                 <option value="subagent">Sub-Agent (Moderator - No Settings/Delete) 👤</option>
@@ -784,7 +982,6 @@ export const AdminDashboard: React.FC = () => {
             <button
               onClick={() => {
                 setIsSavingAll(true);
-                // Explicitly persist everything to localStorage
                 localStorage.setItem('bazaarbd_products', JSON.stringify(products));
                 localStorage.setItem('bazaarbd_settings', JSON.stringify(settings));
                 localStorage.setItem('bazaarbd_gateways', JSON.stringify(gateways));
@@ -804,7 +1001,7 @@ export const AdminDashboard: React.FC = () => {
               disabled={isSavingAll}
               className={`${
                 isSavingAll ? 'bg-emerald-700' : 'bg-emerald-600 hover:bg-emerald-500'
-              } text-white text-xs font-black px-3.5 py-1.5 rounded transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-80 active:scale-97`}
+              } text-white text-xs font-black px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-80 active:scale-97`}
             >
               {isSavingAll ? (
                 <>
@@ -813,30 +1010,126 @@ export const AdminDashboard: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-100 fill-emerald-800 shrink-0" />
-                  <span>Save Changes (সেভ করুন)</span>
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-100 shrink-0" />
+                  <span>Save Changes</span>
                 </>
               )}
             </button>
 
             <button
               onClick={() => setIsAdminView(false)}
-              className="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="bg-white/15 hover:bg-white/25 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border border-white/20"
             >
               <Store className="w-3.5 h-3.5" />
-              <span>Return to Storefront</span>
+              <span>Storefront</span>
             </button>
 
             <button
               onClick={logout}
-              className="bg-red-950 hover:bg-red-900 text-red-200 text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 border border-red-800/60 cursor-pointer"
+              className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
               title="Log out of account"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Log Out</span>
             </button>
           </div>
+
+          {/* Mobile Right Quick 3-Line Actions Button */}
+          <div className="flex items-center gap-2 md:hidden">
+            <button
+              onClick={() => {
+                setIsSavingAll(true);
+                localStorage.setItem('bazaarbd_products', JSON.stringify(products));
+                localStorage.setItem('bazaarbd_settings', JSON.stringify(settings));
+                localStorage.setItem('bazaarbd_gateways', JSON.stringify(gateways));
+                localStorage.setItem('bazaarbd_categories', JSON.stringify(categories));
+                localStorage.setItem('bazaarbd_banners', JSON.stringify(banners));
+                localStorage.setItem('bazaarbd_coupons', JSON.stringify(coupons));
+                localStorage.setItem('bazaarbd_leads', JSON.stringify(leads));
+                localStorage.setItem('bazaarbd_subagents', JSON.stringify(subAgents));
+                localStorage.setItem('bazaarbd_livechats', JSON.stringify(liveChats));
+                localStorage.setItem('bazaarbd_sellers', JSON.stringify(sellers));
+
+                setTimeout(() => {
+                  setIsSavingAll(false);
+                  showToast(language === 'bn' ? 'সব পরিবর্তন ডাটাবেজে সফলভাবে সেভ করা হয়েছে!' : 'All changes saved successfully!', 'success');
+                }, 1000);
+              }}
+              disabled={isSavingAll}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+              <span>Save</span>
+            </button>
+
+            <button
+              onClick={() => setIsTopActionsOpen(!isTopActionsOpen)}
+              className="bg-white/15 hover:bg-white/25 text-white p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-white/20 active:scale-95"
+              aria-label="Toggle Top Actions Menu"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Slide-Down Quick Actions Panel */}
+        {isTopActionsOpen && (
+          <div className="md:hidden bg-sky-950 border-t border-sky-800 p-3.5 space-y-2.5 animate-in slide-in-from-top duration-200 shadow-xl">
+            <div className="flex items-center justify-between pb-1 border-b border-sky-800">
+              <span className="text-[10px] font-black text-sky-300 uppercase tracking-wider">Top Header Quick Actions</span>
+              <button
+                onClick={() => setIsTopActionsOpen(false)}
+                className="text-sky-300 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Access Role Selector */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-sky-300 uppercase">Access Role</label>
+              <select
+                value={isSubAgent ? 'subagent' : 'admin'}
+                onChange={(e) => {
+                  const next = e.target.value === 'subagent';
+                  setIsSubAgent(next);
+                  if (!next) {
+                    setCurrentSubAgent(null);
+                  }
+                  showToast(next ? 'Switched to Sub-Agent Role (Moderation-only)' : 'Switched to Super Admin (Full Access)', 'info');
+                }}
+                className="w-full bg-sky-900 text-white text-xs font-bold p-2 rounded-xl border border-sky-700 outline-none"
+              >
+                <option value="admin">Super Admin (Full Access) 👑</option>
+                <option value="subagent">Sub-Agent (Moderator - No Settings/Delete) 👤</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={() => {
+                  setIsAdminView(false);
+                  setIsTopActionsOpen(false);
+                }}
+                className="w-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold py-2 rounded-xl border border-white/20 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Storefront</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  logout();
+                  setIsTopActionsOpen(false);
+                }}
+                className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sub-Agent Operational Banner */}
@@ -858,12 +1151,9 @@ export const AdminDashboard: React.FC = () => {
                     </span>
                   )}
                   <span className="text-[10px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 rounded font-bold uppercase">
-                    Active
+                    Active (Moderator)
                   </span>
                 </div>
-                <p className="text-[11px] text-purple-200/90 mt-0.5">
-                  ✅ Allowed: Manage Orders, Payment Verification (Approve/Reject TrxID), Live Chat Reply. 🔒 Protected: Store Settings &amp; Data Deletions are restricted to Super Admin.
-                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -890,234 +1180,267 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       <div className="max-w-[1240px] mx-auto px-4 mt-6">
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-gray-200 pb-2 mb-6 overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'overview'
-                ? 'bg-[#0284c7] text-white shadow-xs'
-                : 'text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Overview</span>
-          </button>
+        {/* ===================== MOBILE PHONE HEADER & LEFT SLIDE DRAWER ===================== */}
+        {(() => {
+          const menuGroups = [
+            {
+              groupName: 'MAIN DASHBOARD',
+              items: [
+                { id: 'overview', label: 'Overview', icon: LayoutDashboard, visible: true, badge: null, iconColor: 'text-[#0284c7]' },
+                {
+                  id: 'users',
+                  label: 'Users & Sellers Directory',
+                  icon: Users,
+                  visible: !isSubAgent,
+                  badge: <span className="bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-pulse">Live</span>,
+                  iconColor: 'text-emerald-600',
+                },
+              ],
+            },
+            {
+              groupName: 'STORE & CATALOG',
+              items: [
+                { id: 'products', label: `Products (${products.length})`, icon: Package, visible: true, badge: null, iconColor: 'text-sky-600' },
+                { id: 'categories', label: `Categories (${categories.length})`, icon: Layers, visible: !isSubAgent, badge: null, iconColor: 'text-indigo-600' },
+                { id: 'flashsale', label: `Flash Sale (${products.filter((p) => p.isFlashSale).length})`, icon: Zap, visible: !isSubAgent, badge: null, iconColor: 'text-amber-500' },
+                { id: 'coupons', label: `Coupons (${coupons.length})`, icon: Tag, visible: !isSubAgent, badge: null, iconColor: 'text-emerald-600' },
+                { id: 'banners', label: `Banners (${banners.length})`, icon: Sparkles, visible: !isSubAgent, badge: null, iconColor: 'text-purple-600' },
+              ],
+            },
+            {
+              groupName: 'ORDERS & CUSTOMERS',
+              items: [
+                { id: 'orders', label: `Orders (${orders.length})`, icon: ShoppingCart, visible: (!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canManageOrders || currentSubAgent.permissions.canVerifyPayments), badge: null, iconColor: 'text-blue-600' },
+                { id: 'reviews', label: `Reviews (${allReviews.length})`, icon: Star, visible: (!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canModerateReviews), badge: null, iconColor: 'text-amber-500' },
+                { id: 'leads', label: `Leads (${leads?.length || 0})`, icon: Users, visible: true, badge: null, iconColor: 'text-teal-600' },
+                { id: 'livechat', label: `Live Chat (${liveChats?.filter((c) => c.status === 'Open').length || 0})`, icon: MessageCircle, visible: (!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canLiveChat), badge: null, iconColor: 'text-emerald-600' },
+              ],
+            },
+            {
+              groupName: 'GATEWAYS & SELLERS',
+              items: [
+                { id: 'gateways', label: `Gateways (${gateways.length})`, icon: CreditCard, visible: !isSubAgent, badge: null, iconColor: 'text-[#0284c7]' },
+                {
+                  id: 'sellers',
+                  label: `Sellers & Ads (${sellers.length})`,
+                  icon: Store,
+                  visible: !isSubAgent,
+                  badge: depositRequests.filter((d) => d.status === 'PENDING').length > 0 ? (
+                    <span className="bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
+                      {depositRequests.filter((d) => d.status === 'PENDING').length} dep
+                    </span>
+                  ) : null,
+                  iconColor: 'text-sky-500',
+                },
+                { id: 'financials', label: 'Financials & Commission', icon: DollarSign, visible: !isSubAgent, badge: null, iconColor: 'text-emerald-600' },
+                { id: 'affiliates', label: 'Affiliates (10%)', icon: Coins, visible: !isSubAgent, badge: null, iconColor: 'text-[#f85606]' },
+              ],
+            },
+            {
+              groupName: 'SYSTEM & STAFF',
+              items: [
+                { id: 'settings', label: 'Store Settings', icon: Settings, visible: !isSubAgent, badge: null, iconColor: 'text-gray-700' },
+                { id: 'subagents', label: `Staff Sub-Agents (${subAgents?.length || 0})`, icon: UserCheck, visible: !isSubAgent, badge: null, iconColor: 'text-purple-600' },
+              ],
+            },
+          ];
 
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeTab === 'users'
-                  ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300'
-                  : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 font-extrabold'
-              }`}
-            >
-              <Users className="w-4 h-4 text-emerald-600" />
-              <span>Users &amp; Sellers (Firebase)</span>
-              <span className="bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
-                Live
-              </span>
-            </button>
-          )}
+          const allFlatTabs = menuGroups.flatMap((g) => g.items);
+          const currentTabObj = allFlatTabs.find((t) => t.id === activeTab) || allFlatTabs[0];
+          const CurrentIcon = currentTabObj.icon;
 
-          <button
-            onClick={() => setActiveTab('products')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'products'
-                ? 'bg-[#0284c7] text-white shadow-xs'
-                : 'text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Products ({products.length})</span>
-          </button>
+          return (
+            <>
+              {/* Top Mobile Bar with 3-Line Hamburger Button */}
+              <div className="md:hidden mb-5">
+                <div className="bg-[#0284c7] text-white p-3 rounded-2xl shadow-md flex items-center justify-between">
+                  <button
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="flex items-center gap-2.5 bg-white/15 hover:bg-white/25 active:scale-95 text-white px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border border-white/20"
+                    aria-label="Open Admin Menu"
+                  >
+                    <Menu className="w-5 h-5 shrink-0" />
+                    <span>3-Line Menu</span>
+                  </button>
 
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('categories')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'categories'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>Categories ({categories.length})</span>
-            </button>
-          )}
+                  <div className="flex items-center gap-2 text-right min-w-0 pl-2">
+                    <div className="truncate">
+                      <p className="text-[9px] text-sky-200 font-bold uppercase tracking-wider">Active Section</p>
+                      <p className="text-xs font-black text-white truncate">{currentTabObj.label.split(' (')[0]}</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-xl bg-white text-[#0284c7] flex items-center justify-center shrink-0 shadow-xs">
+                      <CurrentIcon className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('flashsale')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'flashsale'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Zap className="w-4 h-4 text-amber-500" />
-              <span>Flash Sale Timer ({products.filter((p) => p.isFlashSale).length})</span>
-            </button>
-          )}
+              {/* LEFT SLIDE-OUT OFF-CANVAS DRAWER (EXACT MATCH TO UPLOADED IMAGE) */}
+              {isMobileMenuOpen && (
+                <div className="fixed inset-0 z-50 md:hidden flex">
+                  {/* Backdrop Overlay */}
+                  <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  />
 
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('coupons')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'coupons'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Tag className="w-4 h-4 text-emerald-600" />
-              <span>Coupons &amp; Offers ({coupons.length})</span>
-            </button>
-          )}
+                  {/* Left Drawer Container */}
+                  <div className="relative w-[82%] max-w-[320px] bg-white h-full shadow-2xl flex flex-col justify-between overflow-hidden z-50 animate-in slide-in-from-left duration-300">
+                    {/* Drawer Header (Blue top header bar) */}
+                    <div className="bg-[#0284c7] text-white p-4 flex items-center justify-between shrink-0 shadow-sm">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center font-black">
+                          <LayoutDashboard className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h2 className="font-black text-sm tracking-wide uppercase">QUATRO MARKETPLACE</h2>
+                          <p className="text-[10px] text-sky-200 font-semibold">Admin Panel Control</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="p-1.5 rounded-xl bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer"
+                        aria-label="Close menu"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
 
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('banners')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'banners'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Banners ({banners.length})</span>
-            </button>
-          )}
+                    {/* Admin User Welcome Card inside Drawer */}
+                    <div className="p-3 bg-sky-50/80 border-b border-sky-100 flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-[#0284c7] text-white flex items-center justify-center shrink-0 font-bold text-xs">
+                          <Shield className="w-4 h-4" />
+                        </div>
+                        <div className="truncate">
+                          <p className="text-[10px] font-extrabold text-[#0284c7] uppercase tracking-wider">Welcome Admin</p>
+                          <p className="text-xs font-black text-gray-900 truncate">
+                            {isSubAgent ? (currentSubAgent?.name || 'Staff Operator') : 'Super Admin Access'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsAdminView(false);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="bg-[#0284c7] hover:bg-[#0369a1] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0 cursor-pointer shadow-2xs"
+                      >
+                        Store
+                      </button>
+                    </div>
 
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('gateways')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'gateways'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>Payment Gateways ({gateways.length})</span>
-            </button>
-          )}
+                    {/* Scrollable Drawer Menu Items */}
+                    <div className="flex-1 overflow-y-auto p-3 space-y-4">
+                      {menuGroups.map((group, idx) => {
+                        const visibleItems = group.items.filter((item) => item.visible);
+                        if (visibleItems.length === 0) return null;
 
-          {(!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canManageOrders || currentSubAgent.permissions.canVerifyPayments) && (
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'orders'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Orders &amp; Tracking ({orders.length})</span>
-            </button>
-          )}
+                        return (
+                          <div key={idx} className="space-y-1.5">
+                            <div className="flex items-center justify-between px-1">
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                                {group.groupName}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-400">{visibleItems.length}</span>
+                            </div>
 
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'settings'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Contact &amp; Helpline</span>
-            </button>
-          )}
+                            <div className="space-y-1.5">
+                              {visibleItems.map((tab) => {
+                                const Icon = tab.icon;
+                                const isActive = activeTab === tab.id;
 
-          {(!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canModerateReviews) && (
-            <button
-              onClick={() => setActiveTab('reviews')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'reviews'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Star className="w-4 h-4" />
-              <span>Reviews ({allReviews.length})</span>
-            </button>
-          )}
+                                return (
+                                  <button
+                                    key={tab.id}
+                                    onClick={() => {
+                                      setActiveTab(tab.id as any);
+                                      setIsMobileMenuOpen(false);
+                                    }}
+                                    className={`w-full text-left p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                                      isActive
+                                        ? 'bg-[#0284c7] text-white border-[#0284c7] shadow-xs'
+                                        : 'bg-white text-gray-800 border-gray-200/90 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 truncate">
+                                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : tab.iconColor}`} />
+                                      <span className="truncate">{tab.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {tab.badge}
+                                      <ChevronRight className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
 
-          <button
-            onClick={() => setActiveTab('leads')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'leads'
-                ? 'bg-[#0284c7] text-white shadow-xs'
-                : 'text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <Users className="w-4 h-4 text-blue-500" />
-            <span>Audience &amp; Leads ({leads?.length || 0})</span>
-          </button>
-
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('subagents')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'subagents'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <UserCheck className="w-4 h-4 text-purple-600" />
-              <span>Sub-Agents &amp; Staff ({subAgents?.length || 0})</span>
-            </button>
-          )}
-
-          {(!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canLiveChat) && (
-            <button
-              onClick={() => setActiveTab('livechat')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'livechat'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <MessageCircle className="w-4 h-4 text-emerald-600" />
-              <span>Live Chat &amp; Support ({liveChats?.filter((c) => c.status === 'Open').length || 0})</span>
-            </button>
-          )}
-
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('sellers')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeTab === 'sellers'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Store className="w-4 h-4 text-sky-500" />
-              <span>Sellers &amp; Ads ({sellers.length})</span>
-              {depositRequests.filter((d) => d.status === 'PENDING').length > 0 && (
-                <span className="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
-                  {depositRequests.filter((d) => d.status === 'PENDING').length} dep
-                </span>
+                    {/* Drawer Footer Actions */}
+                    <div className="p-3 border-t border-gray-200 bg-gray-50/80 shrink-0 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => {
+                            setIsAdminView(false);
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="w-full bg-[#0284c7] hover:bg-[#0369a1] text-white text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                          <Store className="w-3.5 h-3.5" />
+                          <span>Storefront</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            logout();
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          <span>Log Out</span>
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-gray-400 text-center font-bold tracking-tight">
+                        © 2026 QUATRO MARKETPLACE LTD.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
-          )}
 
-          {!isSubAgent && (
-            <button
-              onClick={() => setActiveTab('financials')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeTab === 'financials'
-                  ? 'bg-[#0284c7] text-white shadow-xs'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <DollarSign className="w-4 h-4 text-emerald-500" />
-              <span>Financials &amp; Commissions</span>
-            </button>
-          )}
-        </div>
+              {/* ================= DESKTOP HORIZONTAL TABS ================= */}
+              <div className="hidden md:flex md:flex-wrap md:items-center border-b border-gray-200 pb-3 mb-6 gap-1.5 sm:gap-2">
+                {allFlatTabs
+                  .filter((t) => t.visible)
+                  .map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                          isActive
+                            ? 'bg-[#0284c7] text-white shadow-xs'
+                            : tab.id === 'users'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 font-extrabold'
+                            : 'text-gray-600 hover:bg-gray-100 bg-gray-50/80 border border-gray-200'
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : tab.iconColor || ''}`} />
+                        <span className="truncate">{tab.label}</span>
+                        {tab.badge}
+                      </button>
+                    );
+                  })}
+              </div>
+            </>
+          );
+        })()}
 
         {/* TAB: UNIFIED USERS & SELLERS DIRECTORY (FIREBASE 'users' COLLECTION) */}
         {activeTab === 'users' && (
@@ -1140,131 +1463,120 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* TAB: AFFILIATE PARTNER SYSTEM (STRICT ADMIN ONLY CONTROL) */}
+        {activeTab === 'affiliates' && (
+          <div className="space-y-6">
+            {isSubAgent ? (
+              <div className="p-8 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-3 max-w-xl mx-auto my-12 shadow-sm">
+                <ShieldAlert className="w-12 h-12 text-rose-600 mx-auto" />
+                <h3 className="text-lg font-black text-rose-900">অ্যাক্সেস সংরক্ষিত: সাব-এজেন্টদের জন্য নিষিদ্ধ</h3>
+                <p className="text-xs text-rose-700 leading-relaxed">
+                  সাব-এজেন্টরা অ্যাফিলিয়েট সিস্টেম কন্ট্রোল করতে পারবে না। অ্যাফিলিয়েট পার্টনার, কমিশন রুলস এবং পেআউট উইথড্রয়াল ম্যানেজ করার পূর্ণ নিয়ন্ত্রণ শুধুমাত্র সুপার অ্যাডমিন প্যানেলেরই থাকবে।
+                </p>
+              </div>
+            ) : (
+              <AdminAffiliateManager />
+            )}
+          </div>
+        )}
+
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* Prominent Firebase Users & Sellers Showcase Banner on Overview */}
-            <div className="bg-gradient-to-r from-slate-900 via-sky-950 to-indigo-950 rounded-2xl p-5 text-white shadow-md border border-sky-800/40 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      <span>Firebase Firestore (`users` collection)</span>
-                    </span>
-                    <span className="bg-white/10 text-sky-200 text-[11px] font-semibold px-2 py-0.5 rounded-md">
-                      Single Central Database
-                    </span>
-                  </div>
-                  <h3 className="font-black text-lg sm:text-xl text-white">
-                    Live Registered Customers &amp; Seller Accounts (কাস্টমার ও সেলার ডেটা)
-                  </h3>
-                  <p className="text-xs text-sky-200 font-medium">
-                    ফ্রন্টএন্ডের সকল গ্রাহক এবং সেলার একাউন্ট একই ফায়ারবেস ডেটাবেসে সংরক্ষিত হচ্ছে এবং এখান থেকে সরাসরি দেখা যাচ্ছে।
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => setActiveTab('users')}
-                    className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Open Full Directory Tab</span>
-                  </button>
-                </div>
+          <div className="space-y-5">
+            {/* Top Quick Stats Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-2xs">
+              <div>
+                <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+                  <span>Executive Overview</span>
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">
+                    ● Live System
+                  </span>
+                </h3>
               </div>
-
-              {/* Quick Summary Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-white/10">
-                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/15">
-                  <span className="text-[10px] text-sky-200 font-bold uppercase block">Database Collection</span>
-                  <span className="text-base font-black text-white block mt-0.5 font-mono">users</span>
-                  <span className="text-[10px] text-emerald-300 font-medium">Single Unified Table</span>
-                </div>
-                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/15">
-                  <span className="text-[10px] text-sky-200 font-bold uppercase block">Frontend Customers</span>
-                  <span className="text-base font-black text-sky-300 block mt-0.5">role: CUSTOMER</span>
-                  <span className="text-[10px] text-sky-200 font-medium">Shopper profiles</span>
-                </div>
-                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/15">
-                  <span className="text-[10px] text-sky-200 font-bold uppercase block">Active Sellers</span>
-                  <span className="text-base font-black text-emerald-300 block mt-0.5">{sellers.length} Shops</span>
-                  <span className="text-[10px] text-emerald-200 font-medium">role: SELLER</span>
-                </div>
-                <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl border border-white/15">
-                  <span className="text-[10px] text-sky-200 font-bold uppercase block">Category Commission</span>
-                  <span className="text-base font-black text-amber-300 block mt-0.5">5% - 12%</span>
-                  <span className="text-[10px] text-amber-200 font-medium">Real-time deduction</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  className="px-3 py-1.5 bg-[#0284c7] hover:bg-[#0369a1] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs"
+                >
+                  Manage Orders &rarr;
+                </button>
+                <button
+                  onClick={() => setActiveTab('sellers')}
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs"
+                >
+                  Seller Approvals &rarr;
+                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
-                  Total Revenue (সর্বমোট)
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+              <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
+                  Total Revenue
                 </span>
                 <p className="text-xl font-black text-gray-900 mt-1 tabular-nums">
                   {formatPrice(totalRevenue)}
                 </p>
-                <span className="text-[11px] text-emerald-600 mt-1 block font-semibold">
+                <span className="text-[11px] text-emerald-600 mt-1 block font-bold">
                   Delivered: {formatPrice(totalDeliveredRevenue)}
                 </span>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
-                <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider block">
-                  Pending Revenue (অপেক্ষমাণ)
+              <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+                <span className="text-xs font-bold text-amber-600 uppercase tracking-wider block">
+                  Pending Revenue
                 </span>
                 <p className="text-xl font-black text-amber-700 mt-1 tabular-nums">
                   {formatPrice(totalPendingRevenue)}
                 </p>
-                <span className="text-[11px] text-gray-500 mt-1 block">
-                  {pendingOrders.length} pending orders
+                <span className="text-[11px] text-gray-500 mt-1 block font-medium">
+                  {pendingOrders.length} orders pending
                 </span>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
-                <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider block">
-                  Completed Orders (সম্পন্ন)
+              <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block">
+                  Completed Orders
                 </span>
                 <p className="text-xl font-black text-emerald-700 mt-1 tabular-nums">
                   {completedOrders.length} / {totalOrders}
                 </p>
-                <span className="text-[11px] text-gray-500 mt-1 block">Delivered successfully</span>
+                <span className="text-[11px] text-gray-500 mt-1 block font-medium">Delivered successfully</span>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
-                <span className="text-xs font-semibold text-purple-600 uppercase tracking-wider block">
-                  Processing / Shipped (চলমান)
+              <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+                <span className="text-xs font-bold text-purple-600 uppercase tracking-wider block">
+                  Processing / Shipped
                 </span>
                 <p className="text-xl font-black text-purple-700 mt-1 tabular-nums">
                   {processingOrders.length}
                 </p>
-                <span className="text-[11px] text-gray-500 mt-1 block">In courier transit</span>
+                <span className="text-[11px] text-gray-500 mt-1 block font-medium">In courier transit</span>
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
+              <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
                   Low Stock Alerts
                 </span>
                 <p className="text-xl font-black text-amber-600 mt-1 tabular-nums">
                   {lowStockProducts.length} items
                 </p>
-                <span className="text-[11px] text-red-600 mt-1 block font-semibold">Requires restocking</span>
+                <span className="text-[11px] text-rose-600 mt-1 block font-bold">Requires restocking</span>
               </div>
             </div>
 
             {/* Low Stock Alerts */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-2xs p-5">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs p-5">
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-bold text-sm text-gray-900">
+                  <h3 className="font-extrabold text-sm text-gray-900">
                     Low Stock &amp; Inventory Alerts
                   </h3>
                 </div>
+                <span className="text-xs font-bold text-gray-400">
+                  {lowStockProducts.length} items below minimum threshold
+                </span>
               </div>
 
               {lowStockProducts.length > 0 ? (
@@ -1292,7 +1604,7 @@ export const AdminDashboard: React.FC = () => {
                                 referrerPolicy="no-referrer"
                               />
                             </div>
-                            <span className="truncate max-w-[280px]">{p.title}</span>
+                            <span className="truncate max-w-[280px] font-bold">{p.title}</span>
                           </td>
                           <td className="py-2.5 px-3 text-gray-600">{p.brand}</td>
                           <td className="py-2.5 px-3">
@@ -1306,7 +1618,7 @@ export const AdminDashboard: React.FC = () => {
                           <td className="py-2.5 px-3 text-right">
                             <button
                               onClick={() => handleRestock(p.id)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] px-3 py-1 rounded transition-colors"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] px-3 py-1 rounded-lg transition-colors cursor-pointer"
                             >
                               Restock +50
                             </button>
@@ -1317,142 +1629,8 @@ export const AdminDashboard: React.FC = () => {
                   </table>
                 </div>
               ) : (
-                <p className="text-xs text-gray-500 py-3">All product inventory levels are healthy!</p>
+                <p className="text-xs text-gray-400 py-3 text-center italic">All product inventory levels are healthy.</p>
               )}
-            </div>
-
-            {/* Registered Users & Sellers from Firebase Overview */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-2xs p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                      <span>Users &amp; Seller Accounts (Firebase Central Database)</span>
-                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">
-                        Live Data
-                      </span>
-                    </h3>
-                    <p className="text-[11px] text-gray-500">
-                      ফ্রন্টএন্ডের সকল রেজিস্টার্ড কাস্টমার ও সেলার একাউন্টের লাইভ তালিকা
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setActiveTab('users')}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Manage All Users &amp; Sellers &rarr;</span>
-                </button>
-              </div>
-
-              {/* Quick stats mini row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-emerald-50/60 p-3 rounded-lg border border-emerald-100">
-                  <span className="text-[11px] text-emerald-800 font-bold block">মোট ব্যবহারকারী (Total)</span>
-                  <p className="text-lg font-black text-emerald-900 mt-0.5 tabular-nums">
-                    {overviewUsers.length > 0 ? overviewUsers.length : (sellers.length + 2)}
-                  </p>
-                </div>
-                <div className="bg-sky-50/60 p-3 rounded-lg border border-sky-100">
-                  <span className="text-[11px] text-sky-800 font-bold block">কাস্টমার (Customers)</span>
-                  <p className="text-lg font-black text-sky-900 mt-0.5 tabular-nums">
-                    {overviewUsers.filter((u) => u.role === 'CUSTOMER').length || 2}
-                  </p>
-                </div>
-                <div className="bg-purple-50/60 p-3 rounded-lg border border-purple-100">
-                  <span className="text-[11px] text-purple-800 font-bold block">সেলার একাউন্ট (Sellers)</span>
-                  <p className="text-lg font-black text-purple-900 mt-0.5 tabular-nums">
-                    {overviewUsers.filter((u) => u.role === 'SELLER').length || sellers.length}
-                  </p>
-                </div>
-                <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-100">
-                  <span className="text-[11px] text-amber-800 font-bold block">অনুমোদিত সেলার (Approved)</span>
-                  <p className="text-lg font-black text-amber-900 mt-0.5 tabular-nums">
-                    {overviewUsers.filter((u) => u.role === 'SELLER' && u.status === 'Approved').length || sellers.filter((s) => s.status === 'Approved').length}
-                  </p>
-                </div>
-              </div>
-
-              {/* Table of Latest Users & Sellers */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
-                      <th className="py-2.5 px-3">User / Account</th>
-                      <th className="py-2.5 px-3">Role</th>
-                      <th className="py-2.5 px-3">Shop / Shipping Info</th>
-                      <th className="py-2.5 px-3">Contact</th>
-                      <th className="py-2.5 px-3">Status</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {(overviewUsers.length > 0 ? overviewUsers : [
-                      { id: 'usr-cust-01', name: 'Tanvir Hossain', email: 'tanvir@gmail.com', phone: '01711223344', role: 'CUSTOMER', status: 'Active', shippingAddress: 'House 14, Road 5, Dhanmondi, Dhaka' },
-                      { id: 'usr-seller-apex-01', name: 'Rahim Chowdhury', email: 'apex.seller@quatro.com', phone: '01912345678', role: 'SELLER', shopName: 'Apex Footwear BD', nidTradeLicense: 'TR-10293847-DHAKA', status: 'Approved' },
-                      { id: 'usr-seller-gadget-02', name: 'Anisul Karim', email: 'gadget.zone@quatro.com', phone: '01798765432', role: 'SELLER', shopName: 'Gadget Zone Bangladesh', nidTradeLicense: 'NID-8829102938', status: 'Approved' },
-                      { id: 'usr-cust-02', name: 'Sadia Rahman', email: 'sadia.r@yahoo.com', phone: '01822334455', role: 'CUSTOMER', status: 'Active', shippingAddress: 'Flat 4B, Shantinagar, Dhaka' },
-                    ]).slice(0, 5).map((u: any) => (
-                      <tr key={u.id} className="hover:bg-gray-50/50">
-                        <td className="py-2.5 px-3">
-                          <div className="font-bold text-gray-900">{u.name}</div>
-                          <div className="text-[11px] text-gray-500">{u.email}</div>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                            u.role === 'SELLER'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-sky-100 text-sky-800'
-                          }`}>
-                            {u.role === 'SELLER' ? '🏪 SELLER' : '👤 CUSTOMER'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-gray-700">
-                          {u.role === 'SELLER' ? (
-                            <div>
-                              <span className="font-semibold text-gray-900">{u.shopName || 'Shop'}</span>
-                              {u.nidTradeLicense && (
-                                <span className="block text-[10px] text-gray-500">License: {u.nidTradeLicense}</span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-gray-600 truncate max-w-[200px] block">
-                              {u.shippingAddress || 'Dhaka, Bangladesh'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-gray-700">
-                          {u.phone || '017XXXXXXXX'}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            u.status === 'Approved' || u.status === 'Active'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : u.status === 'Pending'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {u.status || 'Active'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <button
-                            onClick={() => setActiveTab('users')}
-                            className="text-emerald-700 hover:text-emerald-900 font-bold text-[11px] hover:underline cursor-pointer"
-                          >
-                            Details &rarr;
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
           </div>
         )}
@@ -1733,45 +1911,48 @@ export const AdminDashboard: React.FC = () => {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
-                      <th className="py-3 px-3">Item</th>
-                      <th className="py-3 px-2">Brand</th>
-                      <th className="py-3 px-3">Rating (রেটিং)</th>
-                      <th className="py-3 px-3">Stock (পিস সংখ্যা)</th>
-                      <th className="py-3 px-3">Sold (বিক্রি সংখ্যা)</th>
-                      <th className="py-3 px-2">Flash Sale</th>
-                      <th className="py-3 px-3">Price</th>
-                      <th className="py-3 px-3 text-right">Actions</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Item</th>
+                      <th className="py-3 px-2 whitespace-nowrap">Brand</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Rating (রেটিং)</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Stock (পিস সংখ্যা)</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Sold (বিক্রি সংখ্যা)</th>
+                      <th className="py-3 px-2 whitespace-nowrap">Flash Sale</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Price</th>
+                      <th className="py-3 px-3 text-right whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredProducts.map((p) => (
-                      <tr key={p.id} className="hover:bg-gray-50/50">
-                        <td className="py-2.5 px-3 font-medium text-gray-800 flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded bg-gray-50 border border-gray-200 overflow-hidden shrink-0 p-0.5">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={p.media[0]?.url}
-                              alt={p.title}
-                              className="w-full h-full object-contain"
-                              referrerPolicy="no-referrer"
-                            />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 truncate max-w-[220px]">
-                              {p.title}
-                            </p>
-                            <p className="text-[10px] text-gray-400">ID: {p.id}</p>
+                      <tr key={p.id} className="hover:bg-gray-50/70 transition-colors">
+                        <td className="py-2 px-3 whitespace-nowrap align-middle">
+                          <div className="flex items-center gap-2 max-w-[260px]">
+                            <div className="w-8 h-8 rounded bg-gray-50 border border-gray-200 overflow-hidden shrink-0 p-0.5">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={p.media[0]?.url}
+                                alt={p.title}
+                                className="w-full h-full object-contain"
+                                referrerPolicy="no-referrer"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-gray-900 truncate text-xs" title={p.title}>
+                                {p.title}
+                              </p>
+                              <span className="text-[9px] font-mono text-gray-400 block">ID: {p.id}</span>
+                            </div>
                           </div>
                         </td>
-                        <td className="py-2.5 px-2 text-gray-600 font-medium">{p.brand}</td>
+                        <td className="py-2 px-2 text-gray-700 font-semibold whitespace-nowrap align-middle">{p.brand}</td>
 
                         {/* Rating Column with quick edit */}
-                        <td className="py-2.5 px-3">
+                        <td className="py-2 px-3 whitespace-nowrap align-middle">
                           <div className="flex items-center gap-1">
-                            <span className="flex items-center gap-0.5 text-amber-500 font-extrabold text-[11px]">
+                            <span className="flex items-center gap-0.5 text-amber-600 font-black text-xs">
                               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
                               <span className="tabular-nums">{p.rating.toFixed(1)}</span>
                             </span>
+                            <span className="text-[10px] text-gray-400 font-medium">({p.reviewCount})</span>
                             <button
                               onClick={() => {
                                 const newR = prompt(`Edit rating for "${p.title}" (1.0 to 5.0):`, p.rating.toFixed(1));
@@ -1781,20 +1962,19 @@ export const AdminDashboard: React.FC = () => {
                                   showToast(`Rating updated to ${parsed}★`, 'success');
                                 }
                               }}
-                              className="text-[10px] text-gray-400 hover:text-[#0284c7] px-1 py-0.5 rounded hover:bg-sky-50 font-bold"
+                              className="text-[10px] text-gray-400 hover:text-[#0284c7] p-0.5 rounded hover:bg-sky-50 font-bold cursor-pointer"
                               title="Quick Edit Rating"
                             >
                               ✎
                             </button>
                           </div>
-                          <span className="text-[10px] text-gray-400 block">{p.reviewCount} ratings</span>
                         </td>
 
                         {/* Pieces / Stock with quick adjustment buttons */}
-                        <td className="py-2.5 px-3">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                        <td className="py-2 px-3 whitespace-nowrap align-middle">
+                          <div className="flex items-center gap-1">
                             <span
-                              className={`font-extrabold px-2 py-0.5 rounded text-[11px] tabular-nums ${
+                              className={`font-black px-1.5 py-0.5 rounded text-[11px] tabular-nums ${
                                 p.stock === 0
                                   ? 'bg-red-100 text-red-700'
                                   : p.stock < 10
@@ -1804,94 +1984,90 @@ export const AdminDashboard: React.FC = () => {
                             >
                               {p.stock} pcs
                             </span>
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={() => {
-                                  const newStk = Math.max(0, p.stock - 1);
-                                  updateProduct(p.id, { stock: newStk });
-                                }}
-                                className="w-5 h-5 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-black text-[10px]"
-                                title="Minus 1 pc"
-                              >
-                                -1
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const newStk = p.stock + 5;
-                                  updateProduct(p.id, { stock: newStk });
-                                }}
-                                className="px-1.5 h-5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-[10px]"
-                                title="Add 5 pcs"
-                              >
-                                +5
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const custom = prompt(`Enter exact stock pieces for "${p.title}":`, p.stock.toString());
-                                  if (custom !== null) {
-                                    const parsed = Math.max(0, parseInt(custom) || 0);
-                                    updateProduct(p.id, { stock: parsed });
-                                    showToast(`Stock updated to ${parsed} pcs`, 'success');
-                                  }
-                                }}
-                                className="px-1.5 h-5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px]"
-                                title="Set exact stock pieces"
-                              >
-                                Set
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => {
+                                const newStk = Math.max(0, p.stock - 1);
+                                updateProduct(p.id, { stock: newStk });
+                              }}
+                              className="w-4 h-4 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-[9px] cursor-pointer"
+                              title="Minus 1 pc"
+                            >
+                              -1
+                            </button>
+                            <button
+                              onClick={() => {
+                                const newStk = p.stock + 5;
+                                updateProduct(p.id, { stock: newStk });
+                              }}
+                              className="px-1 h-4 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[9px] cursor-pointer"
+                              title="Add 5 pcs"
+                            >
+                              +5
+                            </button>
+                            <button
+                              onClick={() => {
+                                const custom = prompt(`Enter exact stock pieces for "${p.title}":`, p.stock.toString());
+                                if (custom !== null) {
+                                  const parsed = Math.max(0, parseInt(custom) || 0);
+                                  updateProduct(p.id, { stock: parsed });
+                                  showToast(`Stock updated to ${parsed} pcs`, 'success');
+                                }
+                              }}
+                              className="px-1 h-4 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[9px] cursor-pointer"
+                              title="Set exact stock pieces"
+                            >
+                              Set
+                            </button>
                           </div>
                         </td>
 
-                        {/* Sold Count with +5, -5 buttons (user request: "90 5 sold hoca ata admin thaka korjaba") */}
-                        <td className="py-2.5 px-3">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-extrabold bg-sky-50 text-[#0284c7] border border-sky-200 px-2 py-0.5 rounded text-[11px] tabular-nums">
+                        {/* Sold Count with +5, -5 buttons */}
+                        <td className="py-2 px-3 whitespace-nowrap align-middle">
+                          <div className="flex items-center gap-1">
+                            <span className="font-black bg-sky-50 text-[#0284c7] border border-sky-200 px-1.5 py-0.5 rounded text-[11px] tabular-nums">
                               {p.soldCount} sold
                             </span>
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={() => {
-                                  const newSold = Math.max(0, p.soldCount - 5);
-                                  updateProduct(p.id, { soldCount: newSold });
-                                  showToast(`Sold count decreased to ${newSold}`, 'info');
-                                }}
-                                className="px-1 h-5 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-[10px]"
-                                title="Minus 5 sold (e.g. 95 to 90)"
-                              >
-                                -5
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const newSold = p.soldCount + 5;
-                                  updateProduct(p.id, { soldCount: newSold });
-                                  showToast(`Sold count increased to ${newSold}`, 'success');
-                                }}
-                                className="px-1 h-5 rounded bg-sky-100 hover:bg-sky-200 text-[#0284c7] flex items-center justify-center font-extrabold text-[10px]"
-                                title="Add 5 sold (e.g. 90 to 95)"
-                              >
-                                +5
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const custom = prompt(`Set total sold count for "${p.title}" (e.g. 95):`, p.soldCount.toString());
-                                  if (custom !== null) {
-                                    const parsed = Math.max(0, parseInt(custom) || 0);
-                                    updateProduct(p.id, { soldCount: parsed });
-                                    showToast(`Sold count set to ${parsed}`, 'success');
-                                  }
-                                }}
-                                className="px-1 h-5 rounded bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-[10px]"
-                                title="Set exact sold count"
-                              >
-                                Set
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => {
+                                const newSold = Math.max(0, p.soldCount - 5);
+                                updateProduct(p.id, { soldCount: newSold });
+                                showToast(`Sold count decreased to ${newSold}`, 'info');
+                              }}
+                              className="px-1 h-4 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-[9px] cursor-pointer"
+                              title="Minus 5 sold"
+                            >
+                              -5
+                            </button>
+                            <button
+                              onClick={() => {
+                                const newSold = p.soldCount + 5;
+                                updateProduct(p.id, { soldCount: newSold });
+                                showToast(`Sold count increased to ${newSold}`, 'success');
+                              }}
+                              className="px-1 h-4 rounded bg-sky-100 hover:bg-sky-200 text-[#0284c7] flex items-center justify-center font-bold text-[9px] cursor-pointer"
+                              title="Add 5 sold"
+                            >
+                              +5
+                            </button>
+                            <button
+                              onClick={() => {
+                                const custom = prompt(`Set total sold count for "${p.title}":`, p.soldCount.toString());
+                                if (custom !== null) {
+                                  const parsed = Math.max(0, parseInt(custom) || 0);
+                                  updateProduct(p.id, { soldCount: parsed });
+                                  showToast(`Sold count set to ${parsed}`, 'success');
+                                }
+                              }}
+                              className="px-1 h-4 rounded bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-[9px] cursor-pointer"
+                              title="Set exact sold count"
+                            >
+                              Set
+                            </button>
                           </div>
                         </td>
 
                         {/* Flash Sale Toggle */}
-                        <td className="py-2.5 px-2">
+                        <td className="py-2 px-2 whitespace-nowrap align-middle">
                           <button
                             onClick={() => {
                               const next = !p.isFlashSale;
@@ -1900,7 +2076,7 @@ export const AdminDashboard: React.FC = () => {
                                 flashSaleEnd: next ? new Date(Date.now() + 24 * 3600 * 1000).toISOString() : undefined
                               });
                             }}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
                               p.isFlashSale
                                 ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                 : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -1912,7 +2088,7 @@ export const AdminDashboard: React.FC = () => {
                           </button>
                         </td>
 
-                        <td className="py-2.5 px-3 font-bold text-gray-900 tabular-nums">
+                        <td className="py-2 px-3 font-bold text-gray-900 tabular-nums whitespace-nowrap align-middle">
                           {formatPrice(p.price)}
                         </td>
 
@@ -1975,9 +2151,6 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
               <div>
                 <h3 className="font-bold text-sm text-gray-900">Marketplace Categories</h3>
-                <p className="text-xs text-gray-500">
-                  Manage mega-menu and round filter categories displayed across the website.
-                </p>
               </div>
 
               <button
@@ -2108,57 +2281,82 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Categories List */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
-                    <th className="py-3 px-4">Category Name (EN)</th>
-                    <th className="py-3 px-4">Name (Bangla)</th>
-                    <th className="py-3 px-4">Icon</th>
-                    <th className="py-3 px-4">Commission Rate</th>
-                    <th className="py-3 px-4">Subcategories</th>
-                    <th className="py-3 px-4">Products</th>
-                    <th className="py-3 px-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {categories.map((cat) => {
-                    const count = products.filter((p) => p.categoryId === cat.id).length;
-                    const commRate = cat.commission ?? (cat.id.includes('electronic') || cat.id.includes('accessories') ? 5 : cat.id.includes('fashion') ? 12 : 10);
-                    return (
-                      <tr key={cat.id} className="hover:bg-gray-50/50">
-                        <td className="py-3 px-4 font-bold text-gray-900">{cat.name}</td>
-                        <td className="py-3 px-4 text-gray-700 font-medium">{cat.nameBn}</td>
-                        <td className="py-3 px-4 font-mono text-gray-500">{cat.iconName}</td>
-                        <td className="py-3 px-4">
-                          <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg font-black text-xs">
-                            {commRate}% Commission
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-gray-500">
-                          {cat.subcategories?.map((s) => s.name).join(', ') || 'None'}
-                        </td>
-                        <td className="py-3 px-4 font-bold text-[#0284c7]">{count} items</td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => {
-                              if (isSubAgent) {
-                                showToast('Action Denied: Sub-Agents are not authorized to delete categories', 'error');
-                                return;
-                              }
-                              deleteCategory(cat.id);
-                            }}
-                            className={`p-1 ${isSubAgent ? 'text-gray-300 cursor-not-allowed opacity-50' : 'text-red-500 hover:text-red-700'}`}
-                            title={isSubAgent ? 'Delete Category (Locked)' : 'Delete Category'}
-                            disabled={isSubAgent}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
+                      <th className="py-3 px-4 whitespace-nowrap">Category Name (EN)</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Name (Bangla)</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Icon</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Commission Rate</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Subcategories</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Products</th>
+                      <th className="py-3 px-4 text-right whitespace-nowrap">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {categories.map((cat) => {
+                      const count = products.filter((p) => p.categoryId === cat.id).length;
+                      const commRate =
+                        cat.commission ??
+                        (cat.id.includes('electronic') || cat.id.includes('accessories')
+                          ? 5
+                          : cat.id.includes('fashion')
+                          ? 12
+                          : 10);
+                      return (
+                        <tr key={cat.id} className="hover:bg-gray-50/70 transition-colors">
+                          <td className="py-2.5 px-4 font-bold text-gray-900 whitespace-nowrap align-middle">
+                            {cat.name}
+                          </td>
+                          <td className="py-2.5 px-4 text-gray-700 font-medium whitespace-nowrap align-middle">
+                            {cat.nameBn}
+                          </td>
+                          <td className="py-2.5 px-4 font-mono text-gray-500 whitespace-nowrap align-middle">
+                            {cat.iconName}
+                          </td>
+                          <td className="py-2.5 px-4 whitespace-nowrap align-middle">
+                            <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-black text-xs">
+                              {commRate}% Commission
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-gray-500 whitespace-nowrap align-middle">
+                            <span
+                              className="truncate max-w-[260px] block"
+                              title={cat.subcategories?.map((s) => s.name).join(', ')}
+                            >
+                              {cat.subcategories?.map((s) => s.name).join(', ') || 'None'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 font-bold text-[#0284c7] whitespace-nowrap align-middle">
+                            {count} items
+                          </td>
+                          <td className="py-2.5 px-4 text-right whitespace-nowrap align-middle">
+                            <button
+                              onClick={() => {
+                                if (isSubAgent) {
+                                  showToast('Action Denied: Sub-Agents are not authorized to delete categories', 'error');
+                                  return;
+                                }
+                                deleteCategory(cat.id);
+                              }}
+                              className={`p-1 ${
+                                isSubAgent
+                                  ? 'text-gray-300 cursor-not-allowed opacity-50'
+                                  : 'text-red-500 hover:text-red-700 cursor-pointer'
+                              }`}
+                              title={isSubAgent ? 'Delete Category (Locked)' : 'Delete Category'}
+                              disabled={isSubAgent}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -2168,10 +2366,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
               <div>
-                <h3 className="font-bold text-sm text-gray-900">Hero Banners &amp; Promotional Banners</h3>
-                <p className="text-xs text-gray-500">
-                  Add, change or remove promotional banners displayed on the homepage slider.
-                </p>
+                <h3 className="font-bold text-sm text-gray-900">Hero &amp; Promotional Banners</h3>
               </div>
 
               <button
@@ -2454,9 +2649,6 @@ export const AdminDashboard: React.FC = () => {
                 <h3 className="font-bold text-sm text-gray-900">
                   Payment Gateways &amp; Wallet Numbers
                 </h3>
-                <p className="text-xs text-gray-500">
-                  Configure Personal, Agent, or Merchant accounts for bKash, Nagad, Rocket, etc.
-                </p>
               </div>
 
               <button
@@ -2719,7 +2911,7 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'orders' && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden p-5">
             <h3 className="font-bold text-sm text-gray-900 mb-4 pb-2 border-b border-gray-100">
-              Customer Orders, Payment Verification &amp; Live Tracking
+              Orders &amp; Live Tracking
             </h3>
 
             <div className="overflow-x-auto">
@@ -2731,31 +2923,29 @@ export const AdminDashboard: React.FC = () => {
                     <th className="py-3 px-3">Payment Info</th>
                     <th className="py-3 px-3">Total (BDT)</th>
                     <th className="py-3 px-3">Courier Partner</th>
-                    <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-3 text-right">Update Order</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Update Order</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {orders.map((ord) => (
-                    <tr key={ord.id} className="hover:bg-gray-50/50">
-                      <td className="py-3 px-3 font-mono font-bold text-gray-900">
+                    <tr key={ord.id} className="hover:bg-gray-50/70 transition-colors">
+                      <td className="py-2.5 px-3 font-mono font-bold text-gray-900 whitespace-nowrap align-middle">
                         {ord.orderNumber}
                       </td>
-                      <td className="py-3 px-3">
-                        <p className="font-semibold text-gray-800">{ord.customerName}</p>
-                        <p className="text-[10px] text-gray-400">
-                          {ord.customerPhone} ({ord.shippingAddress.district})
-                        </p>
+                      <td className="py-2.5 px-3 whitespace-nowrap align-middle">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-gray-900 text-xs">{ord.customerName}</span>
+                          <span className="text-[10.5px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                            {ord.customerPhone} ({ord.shippingAddress?.district || 'Hub'})
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-3 px-3">
-                        <div className="flex flex-col gap-1">
-                          <p className="font-bold text-gray-950 text-xs">
-                            {ord.paymentMethod}
-                          </p>
-                          
-                          {/* Payment status badge */}
+                      <td className="py-2.5 px-3 whitespace-nowrap align-middle">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-xs text-gray-900">{ord.paymentMethod}</span>
                           <span
-                            className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border w-max block ${
+                            className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
                               ord.paymentStatus === 'Paid'
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                                 : ord.paymentStatus === 'Failed'
@@ -2767,100 +2957,72 @@ export const AdminDashboard: React.FC = () => {
                               ? 'Verified ✓'
                               : ord.paymentStatus === 'Failed'
                               ? 'Rejected ✗'
-                              : 'Pending Verification ⌛'}
+                              : 'Pending ⌛'}
                           </span>
-                        </div>
-
-                        {/* Transaction ID & Sender details */}
-                        {ord.transactionId && (
-                          <div className="mt-2 bg-gray-50 border border-gray-200 p-1.5 rounded-lg space-y-1 font-mono text-[10.5px]">
-                            <p className="text-blue-700 font-extrabold">
-                              TrxID: <span className="underline select-all text-[11px]">{ord.transactionId}</span>
-                            </p>
-                            {ord.senderNumber && (
-                              <p className="text-gray-700 font-semibold">
-                                From: <span className="text-[11px]">{ord.senderNumber}</span>
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Interactive Verification Buttons (User Request: Verify & Reject if incorrect TrxID) */}
-                        {ord.paymentStatus === 'Pending' && (
-                          (!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canVerifyPayments) ? (
-                            <div className="flex items-center gap-1.5 mt-2">
-                              <button
-                                onClick={() => {
-                                  updatePaymentStatus(ord.id, 'Paid');
-                                }}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] py-1 px-2 rounded-md shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                                title="Approve / Verify payment"
-                              >
-                                <span>Approve ✓</span>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  updatePaymentStatus(ord.id, 'Failed');
-                                }}
-                                className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-[10px] py-1 px-2 rounded-md shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                                title="Reject payment (Wrong TrxID)"
-                              >
-                                <span>Reject ✗</span>
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-gray-400 font-semibold italic mt-1.5 block">
-                              Verification Locked (No Permission)
+                          {ord.transactionId && (
+                            <span className="font-mono text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                              Trx: {ord.transactionId}
                             </span>
-                          )
-                        )}
-                        
-                        {/* Option to toggle / reset status if needed */}
-                        {ord.paymentStatus !== 'Pending' && (!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canVerifyPayments) && (
-                          <button
-                            onClick={() => {
-                              updatePaymentStatus(ord.id, 'Pending');
-                            }}
-                            className="text-[9px] text-gray-400 hover:text-[#0284c7] mt-1.5 hover:underline font-bold block cursor-pointer"
-                          >
-                            Re-verify / Reset to Pending
-                          </button>
-                        )}
+                          )}
+                          {ord.paymentStatus === 'Pending' &&
+                            (!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canVerifyPayments) && (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => updatePaymentStatus(ord.id, 'Paid')}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-1.5 py-0.5 rounded shadow-2xs cursor-pointer"
+                                  title="Approve / Verify payment"
+                                >
+                                  Approve ✓
+                                </button>
+                                <button
+                                  onClick={() => updatePaymentStatus(ord.id, 'Failed')}
+                                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] px-1.5 py-0.5 rounded shadow-2xs cursor-pointer"
+                                  title="Reject payment"
+                                >
+                                  Reject ✗
+                                </button>
+                              </div>
+                            )}
+                        </div>
                       </td>
-                      <td className="py-3 px-3 font-extrabold text-[#0284c7] tabular-nums">
+                      <td className="py-2.5 px-3 font-black text-[#0284c7] tabular-nums whitespace-nowrap align-middle">
                         {formatPrice(ord.total)}
                       </td>
-                      <td className="py-3 px-3 font-medium text-gray-700">
-                        <span className="flex items-center gap-1">
-                          <Truck className="w-3 h-3 text-[#0284c7]" />
-                          <span>{ord.courierPartner || 'Pathao Express'}</span>
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-mono">
-                          {ord.trackingNumber}
-                        </span>
+                      <td className="py-2.5 px-3 whitespace-nowrap align-middle">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-xs text-gray-800 flex items-center gap-1">
+                            <Truck className="w-3.5 h-3.5 text-[#0284c7]" />
+                            <span>{ord.courierPartner || 'Steadfast Courier'}</span>
+                          </span>
+                          {ord.trackingNumber && (
+                            <span className="font-mono text-[10px] bg-sky-50 text-sky-900 border border-sky-200 px-1.5 py-0.5 rounded font-bold">
+                              {ord.trackingNumber}
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="py-3 px-3">
+                      <td className="py-2.5 px-3 whitespace-nowrap align-middle">
                         <span
-                          className={`font-bold px-2 py-0.5 rounded text-[10px] uppercase ${
+                          className={`font-black px-2.5 py-0.5 rounded-full text-[10px] uppercase border ${
                             ord.orderStatus === 'Delivered'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                               : ord.orderStatus === 'Shipped'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
                               : ord.orderStatus === 'Returned'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-amber-100 text-amber-800'
+                              ? 'bg-purple-50 text-purple-800 border-purple-200'
+                              : 'bg-amber-50 text-amber-800 border-amber-200'
                           }`}
                         >
                           {ord.orderStatus}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right">
-                        {(!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canManageOrders) ? (
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap align-middle">
+                        {!isSubAgent || !currentSubAgent || currentSubAgent.permissions.canManageOrders ? (
                           <div className="flex items-center justify-end gap-1.5">
                             <select
                               value={ord.orderStatus}
                               onChange={(e) => updateOrderStatus(ord.id, e.target.value as OrderStatus)}
-                              className="text-xs p-1 rounded border border-gray-300 font-semibold bg-white outline-none cursor-pointer"
+                              className="text-xs py-1 px-2 rounded-lg border border-gray-300 font-bold bg-white outline-none cursor-pointer"
                             >
                               <option value="Pending">Pending</option>
                               <option value="Confirmed">Confirmed</option>
@@ -2872,11 +3034,20 @@ export const AdminDashboard: React.FC = () => {
                             </select>
 
                             <button
+                              onClick={() => setDispatchingOrder(ord)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                              title="Book Courier & Send Tracking SMS"
+                            >
+                              <Truck className="w-3.5 h-3.5 text-white" />
+                              <span>Book Courier</span>
+                            </button>
+
+                            <button
                               onClick={() => {
                                 setTrackingModalOrder(ord.id);
-                                setCourierName(ord.courierPartner || 'Pathao Express');
+                                setCourierName(ord.courierPartner || 'Steadfast Courier');
                               }}
-                              className="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                              className="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
                               title="Add Tracking Event"
                             >
                               <Truck className="w-3 h-3" />
@@ -2963,6 +3134,26 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Courier Dispatch Modal for Steadfast / Pathao */}
+            {dispatchingOrder && (
+              <CourierDispatchModal
+                order={dispatchingOrder}
+                onDispatchSuccess={(code, partner) => {
+                  updateOrderTracking(
+                    dispatchingOrder.id,
+                    partner,
+                    'Shipped',
+                    `Dispatched with ${partner}. Consignment: ${code}`,
+                    dispatchingOrder.shippingAddress?.district || 'Hub',
+                    code
+                  );
+                  setDispatchingOrder(null);
+                  showToast(`🎉 Steadfast বুকিং সফল! ট্র্যাকিং কোড: ${code} এবং SMS পাঠানো হয়েছে`, 'success');
+                }}
+                onClose={() => setDispatchingOrder(null)}
+              />
+            )}
           </div>
         )}
 
@@ -2977,11 +3168,8 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-extrabold text-sm text-gray-900">
-                      Flash Sale Countdown Timer &amp; Meter Settings (ফ্ল্যাশ সেল সময় ও অফার)
+                      Flash Sale Countdown Timer
                     </h3>
-                    <p className="text-xs text-gray-500">
-                      Set live countdown hours &amp; minutes displayed across the homepage flash sale banner.
-                    </p>
                   </div>
                 </div>
 
@@ -3066,9 +3254,6 @@ export const AdminDashboard: React.FC = () => {
                   <h4 className="font-extrabold text-sm text-gray-900">
                     Flash Sale Products ({products.filter((p) => p.isFlashSale).length})
                   </h4>
-                  <p className="text-xs text-gray-500">
-                    Toggle which products appear with the sold progress meter in the Flash Sale section.
-                  </p>
                 </div>
               </div>
 
@@ -3174,9 +3359,6 @@ export const AdminDashboard: React.FC = () => {
                   <Tag className="w-4 h-4 text-emerald-600" />
                   <span>Coupon Codes &amp; Promotional Offers ({coupons.length})</span>
                 </h3>
-                <p className="text-xs text-gray-500">
-                  Create and manage discount codes customers can apply in their cart and checkout.
-                </p>
               </div>
 
               <button
@@ -3355,12 +3537,9 @@ export const AdminDashboard: React.FC = () => {
         {/* TAB 6: CONTACT & HELPLINE SETTINGS */}
         {activeTab === 'settings' && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-2xs p-5 max-w-[700px]">
-            <h3 className="font-bold text-sm text-gray-900 mb-1">
+            <h3 className="font-bold text-sm text-gray-900 mb-4 pb-2 border-b border-gray-100">
               Store Contact, WhatsApp &amp; Helpline Settings
             </h3>
-            <p className="text-xs text-gray-500 mb-4 pb-2 border-b border-gray-100">
-              Changes saved here instantly update across the TopBar, Header, Footer, and Floating WhatsApp chat button.
-            </p>
 
             <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
               {/* Site Logo Section */}
@@ -3371,7 +3550,6 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="font-extrabold text-xs text-gray-900">Website Brand Logo URL</h4>
-                    <p className="text-[10px] text-gray-500">Update your main website logo displayed in the header and footer.</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -3401,8 +3579,7 @@ export const AdminDashboard: React.FC = () => {
                       <MessageCircle className="w-4 h-4 fill-white" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-xs text-gray-900">WhatsApp Contact Number (সরাসরি হোয়াটসঅ্যাপ নাম্বার)</h4>
-                      <p className="text-[10px] text-gray-500">Live chat button across website connects directly to this WhatsApp number.</p>
+                      <h4 className="font-extrabold text-xs text-gray-900">WhatsApp Contact Number</h4>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
@@ -3435,10 +3612,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[10px] text-gray-500">
-                    Supports any standard Bangladeshi (017...) or International (+880...) format.
-                  </span>
+                <div className="flex items-center justify-end pt-1">
                   <a
                     href={`https://wa.me/${storeWhatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(storeWhatsappGreeting)}`}
                     target="_blank"
@@ -3508,6 +3682,505 @@ export const AdminDashboard: React.FC = () => {
                 />
               </div>
 
+              {/* Dedicated Seller Center Portal Branding & Hotline Section */}
+              <div className="p-4 bg-sky-50/70 rounded-xl border border-sky-200 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-sky-200/80">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#0284c7] text-white flex items-center justify-center shadow-xs">
+                      <Store className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-xs text-gray-900">Seller Center Portal Branding &amp; Hotline (সেলার পোর্টাল সেটিংস)</h4>
+                      <p className="text-[10px] text-gray-500">সেলার পোর্টালের নাম, লোগো এবং মার্চেন্ট সাপোর্ট হটলাইন নাম্বার পরিবর্তন করুন</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full">
+                    Seller Portal Live
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Seller Portal Name / Title *</label>
+                    <input
+                      type="text"
+                      value={sellerName}
+                      onChange={(e) => setSellerName(e.target.value)}
+                      placeholder="QUATRO Seller Center"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none font-bold text-gray-900 bg-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Merchant Support Hotline Phone *</label>
+                    <input
+                      type="text"
+                      value={sellerHotline}
+                      onChange={(e) => setSellerHotline(e.target.value)}
+                      placeholder="+880 9612-444888 or 017xxxxxxxx"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none font-bold text-gray-900 bg-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Merchant Support Email Address</label>
+                    <input
+                      type="email"
+                      value={sellerEmail}
+                      onChange={(e) => setSellerEmail(e.target.value)}
+                      placeholder="seller-support@quatro.com.bd"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Seller Portal Logo URL</label>
+                    <input
+                      type="text"
+                      value={sellerLogoUrl}
+                      onChange={(e) => setSellerLogoUrl(e.target.value)}
+                      placeholder="https://.../seller-logo.png"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none font-mono text-[11px] bg-white"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-gray-700 block mb-1">Seller Landing Page Headline / Tagline</label>
+                    <input
+                      type="text"
+                      value={sellerBannerText}
+                      onChange={(e) => setSellerBannerText(e.target.value)}
+                      placeholder="Grow Your Business Across All 64 Districts of Bangladesh"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none bg-white font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Metric 1: Buyers Highlight String</label>
+                    <input
+                      type="text"
+                      value={sellerStatBuyers}
+                      onChange={(e) => setSellerStatBuyers(e.target.value)}
+                      placeholder="10M+ Monthly Active Buyers"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none bg-white text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Metric 2: Registration Fee String</label>
+                    <input
+                      type="text"
+                      value={sellerStatFee}
+                      onChange={(e) => setSellerStatFee(e.target.value)}
+                      placeholder="৳0 Fee (Free Registration)"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none bg-white text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-gray-700 block mb-1">Metric 3: Payout Cycle String</label>
+                    <input
+                      type="text"
+                      value={sellerStatPayout}
+                      onChange={(e) => setSellerStatPayout(e.target.value)}
+                      placeholder="7 Days Guaranteed Payout Cycle"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-[#0284c7] outline-none bg-white text-xs font-semibold"
+                    />
+                  </div>
+
+                  {/* 3 Onboarding Steps Configuration */}
+                  <div className="sm:col-span-2 pt-3 border-t border-sky-200/80 space-y-3">
+                    <h5 className="font-black text-xs text-sky-950 uppercase tracking-wider">
+                      Seller Onboarding 3 Steps Configuration
+                    </h5>
+
+                    <div className="space-y-3 bg-white p-3.5 rounded-xl border border-sky-200/70">
+                      <div>
+                        <label className="font-bold text-gray-700 block mb-1">Step 1 Title & Description</label>
+                        <input
+                          type="text"
+                          value={sellerOnboardingStep1Title}
+                          onChange={(e) => setSellerOnboardingStep1Title(e.target.value)}
+                          placeholder="1. Register Your Shop"
+                          className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none text-xs font-bold mb-1.5"
+                        />
+                        <textarea
+                          rows={2}
+                          value={sellerOnboardingStep1Desc}
+                          onChange={(e) => setSellerOnboardingStep1Desc(e.target.value)}
+                          placeholder="Provide your shop name, owner contact details..."
+                          className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none text-xs resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-gray-700 block mb-1">Step 2 Title & Description</label>
+                        <input
+                          type="text"
+                          value={sellerOnboardingStep2Title}
+                          onChange={(e) => setSellerOnboardingStep2Title(e.target.value)}
+                          placeholder="2. Upload Products"
+                          className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none text-xs font-bold mb-1.5"
+                        />
+                        <textarea
+                          rows={2}
+                          value={sellerOnboardingStep2Desc}
+                          onChange={(e) => setSellerOnboardingStep2Desc(e.target.value)}
+                          placeholder="Add titles, multiple images, video preview..."
+                          className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none text-xs resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-gray-700 block mb-1">Step 3 Title & Description</label>
+                        <input
+                          type="text"
+                          value={sellerOnboardingStep3Title}
+                          onChange={(e) => setSellerOnboardingStep3Title(e.target.value)}
+                          placeholder="3. Start Earning & Payouts"
+                          className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none text-xs font-bold mb-1.5"
+                        />
+                        <textarea
+                          rows={2}
+                          value={sellerOnboardingStep3Desc}
+                          onChange={(e) => setSellerOnboardingStep3Desc(e.target.value)}
+                          placeholder="Receive orders from buyers nationwide..."
+                          className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none text-xs resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Value Propositions Configuration */}
+                  <div className="sm:col-span-2 pt-3 border-t border-sky-200/80 space-y-3">
+                    <h5 className="font-black text-xs text-sky-950 uppercase tracking-wider">
+                      Seller Value Propositions (4 Highlight Cards)
+                    </h5>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="bg-white p-3 rounded-xl border border-sky-200/70 space-y-1.5">
+                        <label className="font-bold text-gray-700 block">Card 1 (Payouts)</label>
+                        <input
+                          type="text"
+                          value={sellerValueProp1Title}
+                          onChange={(e) => setSellerValueProp1Title(e.target.value)}
+                          className="w-full p-2 rounded border border-gray-300 outline-none text-xs font-bold"
+                          placeholder="Guaranteed Weekly Payouts"
+                        />
+                        <textarea
+                          rows={2}
+                          value={sellerValueProp1Desc}
+                          onChange={(e) => setSellerValueProp1Desc(e.target.value)}
+                          className="w-full p-2 rounded border border-gray-300 outline-none text-xs resize-none"
+                          placeholder="Withdraw your earnings hassle-free..."
+                        />
+                      </div>
+
+                      <div className="bg-white p-3 rounded-xl border border-sky-200/70 space-y-1.5">
+                        <label className="font-bold text-gray-700 block">Card 2 (Logistics)</label>
+                        <input
+                          type="text"
+                          value={sellerValueProp2Title}
+                          onChange={(e) => setSellerValueProp2Title(e.target.value)}
+                          className="w-full p-2 rounded border border-gray-300 outline-none text-xs font-bold"
+                          placeholder="64 District Delivery Network"
+                        />
+                        <textarea
+                          rows={2}
+                          value={sellerValueProp2Desc}
+                          onChange={(e) => setSellerValueProp2Desc(e.target.value)}
+                          className="w-full p-2 rounded border border-gray-300 outline-none text-xs resize-none"
+                          placeholder="Integrated courier pickup agents..."
+                        />
+                      </div>
+
+                      <div className="bg-white p-3 rounded-xl border border-sky-200/70 space-y-1.5">
+                        <label className="font-bold text-gray-700 block">Card 3 (Analytics)</label>
+                        <input
+                          type="text"
+                          value={sellerValueProp3Title}
+                          onChange={(e) => setSellerValueProp3Title(e.target.value)}
+                          className="w-full p-2 rounded border border-gray-300 outline-none text-xs font-bold"
+                          placeholder="Powerful Seller Analytics"
+                        />
+                        <textarea
+                          rows={2}
+                          value={sellerValueProp3Desc}
+                          onChange={(e) => setSellerValueProp3Desc(e.target.value)}
+                          className="w-full p-2 rounded border border-gray-300 outline-none text-xs resize-none"
+                          placeholder="Track total pieces sold, net income..."
+                        />
+                      </div>
+
+                      <div className="bg-white p-3 rounded-xl border border-sky-200/70 space-y-1.5">
+                        <label className="font-bold text-gray-700 block">Card 4 (Support)</label>
+                        <input
+                          type="text"
+                          value={sellerValueProp4Title}
+                          onChange={(e) => setSellerValueProp4Title(e.target.value)}
+                          className="w-full p-2 rounded border border-gray-300 outline-none text-xs font-bold"
+                          placeholder="24/7 Merchant Support"
+                        />
+                        <textarea
+                          rows={2}
+                          value={sellerValueProp4Desc}
+                          onChange={(e) => setSellerValueProp4Desc(e.target.value)}
+                          className="w-full p-2 rounded border border-gray-300 outline-none text-xs resize-none"
+                          placeholder="Dedicated key account managers..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Category Commission Rates Table */}
+                  <div className="sm:col-span-2 pt-3 border-t border-sky-200/80 space-y-3">
+                    <h5 className="font-black text-xs text-sky-950 uppercase tracking-wider">
+                      Category Commission Rates Management
+                    </h5>
+
+                    <div className="bg-white p-3 rounded-xl border border-sky-200/70 space-y-3">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="bg-gray-50 text-gray-600 uppercase text-[10px] font-extrabold border-b border-gray-200">
+                              <th className="p-2">Category</th>
+                              <th className="p-2">Listing Fee</th>
+                              <th className="p-2">Commission %</th>
+                              <th className="p-2">Payout Cycle</th>
+                              <th className="p-2 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {sellerCommissionsList.map((comm, idx) => (
+                              <tr key={idx}>
+                                <td className="p-2 font-bold text-gray-900">{comm.categoryName}</td>
+                                <td className="p-2 text-emerald-600 font-bold">{comm.listingFee}</td>
+                                <td className="p-2 font-bold text-[#0284c7]">{comm.commissionPercent}%</td>
+                                <td className="p-2 text-gray-500">{comm.payoutCycle}</td>
+                                <td className="p-2 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCommission(idx)}
+                                    className="text-red-500 hover:text-red-700 font-bold cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Add new commission row form */}
+                      <div className="pt-2 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <input
+                          type="text"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="Category Name"
+                          className="p-2 rounded border border-gray-300 text-xs outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={newListingFee}
+                          onChange={(e) => setNewListingFee(e.target.value)}
+                          placeholder="Listing Fee (e.g. FREE ৳0)"
+                          className="p-2 rounded border border-gray-300 text-xs outline-none"
+                        />
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={newCommissionPercent}
+                          onChange={(e) => setNewCommissionPercent(e.target.value)}
+                          placeholder="Commission %"
+                          className="p-2 rounded border border-gray-300 text-xs outline-none"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newPayoutCycle}
+                            onChange={(e) => setNewPayoutCycle(e.target.value)}
+                            placeholder="Payout Cycle"
+                            className="p-2 rounded border border-gray-300 text-xs outline-none flex-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCommission}
+                            className="px-3 py-2 bg-[#0284c7] hover:bg-[#0369a1] text-white rounded font-bold text-xs cursor-pointer shrink-0"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seller FAQs Configuration */}
+                  <div className="sm:col-span-2 pt-3 border-t border-sky-200/80 space-y-3">
+                    <h5 className="font-black text-xs text-sky-950 uppercase tracking-wider">
+                      Seller Frequently Asked Questions (FAQs)
+                    </h5>
+
+                    <div className="bg-white p-3 rounded-xl border border-sky-200/70 space-y-3">
+                      <div className="space-y-2 max-h-56 overflow-y-auto">
+                        {sellerFaqsList.map((faq, idx) => (
+                          <div key={idx} className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 flex items-start justify-between gap-2">
+                            <div className="space-y-1 text-xs">
+                              <p className="font-bold text-gray-900">Q: {faq.q}</p>
+                              <p className="text-gray-600">A: {faq.a}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFaq(idx)}
+                              className="text-red-500 hover:text-red-700 font-bold p-1 cursor-pointer shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Add FAQ form */}
+                      <div className="pt-2 border-t border-gray-100 space-y-2">
+                        <input
+                          type="text"
+                          value={newFaqQ}
+                          onChange={(e) => setNewFaqQ(e.target.value)}
+                          placeholder="New FAQ Question..."
+                          className="w-full p-2 rounded border border-gray-300 text-xs outline-none font-medium"
+                        />
+                        <textarea
+                          rows={2}
+                          value={newFaqA}
+                          onChange={(e) => setNewFaqA(e.target.value)}
+                          placeholder="FAQ Answer details..."
+                          className="w-full p-2 rounded border border-gray-300 text-xs outline-none resize-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddFaq}
+                          className="px-4 py-2 bg-[#0284c7] hover:bg-[#0369a1] text-white rounded font-bold text-xs cursor-pointer inline-flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Seller FAQ</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seller Footer & Partners Statement */}
+                  <div className="sm:col-span-2 pt-3 border-t border-sky-200/80 space-y-3">
+                    <h5 className="font-black text-xs text-sky-950 uppercase tracking-wider">
+                      Seller Footer &amp; Logistics/Finance Statements
+                    </h5>
+
+                    <div className="space-y-3 bg-white p-3.5 rounded-xl border border-sky-200/70">
+                      <div>
+                        <label className="font-bold text-gray-700 block mb-1">Empowering Statement (Footer)</label>
+                        <textarea
+                          rows={2}
+                          value={sellerEmpoweringStatement}
+                          onChange={(e) => setSellerEmpoweringStatement(e.target.value)}
+                          placeholder="Empowering 15,000+ local sellers across Bangladesh..."
+                          className="w-full p-2 rounded border border-gray-300 text-xs outline-none resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-gray-700 block mb-1">Logistics Partners (Comma-separated)</label>
+                        <input
+                          type="text"
+                          value={sellerLogisticsPartnersStr}
+                          onChange={(e) => setSellerLogisticsPartnersStr(e.target.value)}
+                          placeholder="Steadfast Express, Pathao Express, RedX..."
+                          className="w-full p-2 rounded border border-gray-300 text-xs outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-gray-700 block mb-1">Payment &amp; Payout Channels (Comma-separated)</label>
+                        <input
+                          type="text"
+                          value={sellerPaymentChannelsStr}
+                          onChange={(e) => setSellerPaymentChannelsStr(e.target.value)}
+                          placeholder="Weekly Automated Settlements, Direct bKash..."
+                          className="w-full p-2 rounded border border-gray-300 text-xs outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dedicated Sub-Agent Portal Branding & Hotline Section */}
+              <div className="p-4 bg-purple-50/70 rounded-xl border border-purple-200 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-purple-200/80">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-purple-700 text-white flex items-center justify-center shadow-xs">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-xs text-gray-900">Staff &amp; Sub-Agent Portal Branding &amp; Hotline (সাব-এজেন্ট পোর্টাল সেটিংস)</h4>
+                      <p className="text-[10px] text-gray-500">সাব-এজেন্ট লগইন ও স্টাফ প্যানেলের নাম, লোগো ও হেল্পলাইন নাম্বার পরিবর্তন করুন</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                    Sub-Agent Staff
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Sub-Agent Portal Title *</label>
+                    <input
+                      type="text"
+                      value={subAgentPortalTitle}
+                      onChange={(e) => setSubAgentPortalTitle(e.target.value)}
+                      placeholder="QUATRO Staff & Sub-Agent Portal"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-purple-600 outline-none font-bold text-gray-900 bg-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Staff Helpline / Support Phone *</label>
+                    <input
+                      type="text"
+                      value={subAgentHotline}
+                      onChange={(e) => setSubAgentHotline(e.target.value)}
+                      placeholder="16124 or 01700-000000"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-purple-600 outline-none font-bold text-gray-900 bg-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Sub-Agent Support Email</label>
+                    <input
+                      type="email"
+                      value={subAgentEmail}
+                      onChange={(e) => setSubAgentEmail(e.target.value)}
+                      placeholder="agent-support@quatro.com.bd"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-purple-600 outline-none bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Sub-Agent Portal Logo URL</label>
+                    <input
+                      type="text"
+                      value={subAgentPortalLogo}
+                      onChange={(e) => setSubAgentPortalLogo(e.target.value)}
+                      placeholder="https://.../subagent-logo.png"
+                      className="w-full p-2.5 rounded border border-gray-300 focus:border-purple-600 outline-none font-mono text-[11px] bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="pt-4 border-t border-gray-100 space-y-3">
                 <h4 className="font-bold text-sm text-gray-900 mb-1">Customer Purchasing &amp; Button Control Toggles</h4>
 
@@ -3515,9 +4188,6 @@ export const AdminDashboard: React.FC = () => {
                 <div className="flex items-center justify-between p-3.5 bg-amber-50/50 rounded-xl border border-amber-100">
                   <div>
                     <h5 className="font-bold text-xs text-gray-900">1. &quot;Add to Cart&quot; Button</h5>
-                    <p className="text-[11px] text-gray-500">
-                      Allows customers to add items to their shopping cart and continue browsing.
-                    </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
                     <input
@@ -3537,9 +4207,6 @@ export const AdminDashboard: React.FC = () => {
                 <div className="flex items-center justify-between p-3.5 bg-sky-50/50 rounded-xl border border-sky-100">
                   <div>
                     <h5 className="font-bold text-xs text-gray-900">2. &quot;Buy Now / Direct COD&quot; Button</h5>
-                    <p className="text-[11px] text-gray-500">
-                      Allows customers to click Buy Now and jump straight to Cash on Delivery / Instant Checkout.
-                    </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
                     <input
@@ -3559,9 +4226,6 @@ export const AdminDashboard: React.FC = () => {
                 <div className="flex items-center justify-between p-3.5 bg-emerald-50/50 rounded-xl border border-emerald-100">
                   <div>
                     <h5 className="font-bold text-xs text-gray-900">3. Cash on Delivery (COD) Payment Option</h5>
-                    <p className="text-[11px] text-gray-500">
-                      Toggle whether the Cash on Delivery (COD) option is visible at Checkout.
-                    </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
                     <input
@@ -3575,6 +4239,231 @@ export const AdminDashboard: React.FC = () => {
                       {settings.isCodEnabled !== false ? 'ON (Active)' : 'OFF (Hidden)'}
                     </span>
                   </label>
+                </div>
+
+                {/* All Online Payments Master Toggle */}
+                <div className="flex items-center justify-between p-3.5 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                  <div>
+                    <h5 className="font-bold text-xs text-gray-900">4. Online Payments Master Switch</h5>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={settings.isOnlinePaymentEnabled !== false}
+                      onChange={(e) => updateSettings({ isOnlinePaymentEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    <span className="ml-2 text-xs font-bold text-gray-700 min-w-[70px]">
+                      {settings.isOnlinePaymentEnabled !== false ? 'ON (Active)' : 'OFF (Disabled)'}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Auto Direct Gateway Popup Toggle */}
+                <div className="flex items-center justify-between p-3.5 bg-pink-50/50 rounded-xl border border-pink-100">
+                  <div>
+                    <h5 className="font-bold text-xs text-gray-900">5. Auto Direct Gateway Popup</h5>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={settings.isAutoPaymentEnabled !== false}
+                      onChange={(e) => updateSettings({ isAutoPaymentEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                    <span className="ml-2 text-xs font-bold text-gray-700 min-w-[70px]">
+                      {settings.isAutoPaymentEnabled !== false ? 'ON (Active)' : 'OFF (Manual Only)'}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Live Merchant API TrxID Verification Toggle */}
+                <div className="flex items-center justify-between p-3.5 bg-purple-50/50 rounded-xl border border-purple-100">
+                  <div>
+                    <h5 className="font-bold text-xs text-gray-900">6. Merchant API TrxID Verification</h5>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={settings.isMerchantVerifyEnabled === true}
+                      onChange={(e) => updateSettings({ isMerchantVerifyEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    <span className="ml-2 text-xs font-bold text-gray-700 min-w-[70px]">
+                      {settings.isMerchantVerifyEnabled === true ? 'ON (Strict API)' : 'OFF (Manual Check)'}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* PAYMENT ENGINE & SSLCOMMERZ INTEGRATION BOX */}
+              <div className="p-4 bg-linear-to-r from-blue-500/10 via-indigo-500/10 to-teal-500/10 rounded-2xl border border-indigo-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                      💳
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-xs text-gray-900">
+                        Payment Engine &amp; SSLCommerz Automated Gateway
+                      </h4>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full ${
+                    settings.paymentEngineMode === 'sslcommerz_auto'
+                      ? 'bg-teal-100 text-teal-800'
+                      : 'bg-indigo-100 text-indigo-800'
+                  }`}>
+                    {settings.paymentEngineMode === 'sslcommerz_auto' ? 'SSLCommerz Active' : 'Manual Mode Active'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">
+                      Active Payment Engine Mode (পেমেন্ট মোড)
+                    </label>
+                    <select
+                      value={settings.paymentEngineMode || 'manual_send_money'}
+                      onChange={(e) => updateSettings({ paymentEngineMode: e.target.value as any })}
+                      className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-indigo-600 outline-none font-bold text-gray-900 bg-white"
+                    >
+                      <option value="manual_send_money">1. Manual Send Money (বিকাশ/নগদ ম্যানুয়াল সেন্ড মানি - বর্তমান)</option>
+                      <option value="sslcommerz_auto">2. SSLCommerz Auto Gateway (কার্ড, বিকাশ, নগদ অটোমেটেড - ১৫-২০ দিন পর)</option>
+                      <option value="direct_pgw">3. Direct bKash / Nagad PGW (টোকেনাইজড পপআপ)</option>
+                      <option value="cod_only">4. Cash on Delivery Only (শুধুমাত্র ক্যাশ অন ডেলিভারি)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">
+                      SSLCommerz Environment
+                    </label>
+                    <select
+                      value={settings.sslcommerzConfig?.environment || 'sandbox'}
+                      onChange={(e) => updateSettings({
+                        sslcommerzConfig: {
+                          ...settings.sslcommerzConfig,
+                          environment: e.target.value as any
+                        }
+                      })}
+                      className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-indigo-600 outline-none font-bold text-gray-900 bg-white"
+                    >
+                      <option value="sandbox">Sandbox (Testing / Demo Mode)</option>
+                      <option value="live">Live Production (Real Payment Capture)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">
+                      SSLCommerz Store ID
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.sslcommerzConfig?.storeId || ''}
+                      onChange={(e) => updateSettings({
+                        sslcommerzConfig: {
+                          ...settings.sslcommerzConfig,
+                          storeId: e.target.value
+                        }
+                      })}
+                      placeholder="e.g. testbox or your_store_id"
+                      className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-indigo-600 outline-none font-mono text-xs bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">
+                      SSLCommerz Store Password
+                    </label>
+                    <input
+                      type="password"
+                      value={settings.sslcommerzConfig?.storePassword || ''}
+                      onChange={(e) => updateSettings({
+                        sslcommerzConfig: {
+                          ...settings.sslcommerzConfig,
+                          storePassword: e.target.value
+                        }
+                      })}
+                      placeholder="••••••••••••"
+                      className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-indigo-600 outline-none font-mono text-xs bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SMS GATEWAY CONFIGURATION BOX */}
+              <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                      💬
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-xs text-gray-900">
+                        Automated SMS Gateway Configuration
+                      </h4>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
+                    {settings.smsConfig?.apiKey ? 'SMS API Connected' : 'Ready for API Key'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">SMS Provider</label>
+                    <select
+                      value={settings.smsConfig?.provider || 'mim_sms'}
+                      onChange={(e) => updateSettings({
+                        smsConfig: {
+                          ...settings.smsConfig,
+                          provider: e.target.value as any
+                        }
+                      })}
+                      className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-emerald-600 outline-none font-bold text-gray-900 bg-white"
+                    >
+                      <option value="ssl_wireless">SSLWireless SMS</option>
+                      <option value="mim_sms">MimSMS BD</option>
+                      <option value="greenweb">Greenweb SMS</option>
+                      <option value="elitbuzz">ElitBuzz BD</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Sender ID / Masking</label>
+                    <input
+                      type="text"
+                      value={settings.smsConfig?.senderId || 'QUATRO'}
+                      onChange={(e) => updateSettings({
+                        smsConfig: {
+                          ...settings.smsConfig,
+                          senderId: e.target.value
+                        }
+                      })}
+                      placeholder="QUATRO or 8809..."
+                      className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-emerald-600 outline-none font-bold text-xs bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">SMS API Key</label>
+                    <input
+                      type="password"
+                      value={settings.smsConfig?.apiKey || ''}
+                      onChange={(e) => updateSettings({
+                        smsConfig: {
+                          ...settings.smsConfig,
+                          apiKey: e.target.value
+                        }
+                      })}
+                      placeholder="Paste your SMS API key here"
+                      className="w-full p-2.5 rounded-lg border border-gray-300 focus:border-emerald-600 outline-none font-mono text-xs bg-white"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -3707,12 +4596,9 @@ export const AdminDashboard: React.FC = () => {
                       Audience CRM &amp; Leads
                     </span>
                     <h3 className="font-extrabold text-base text-gray-900">
-                      Interested Audience, Product Inquiries &amp; Newsletter Signups
+                      Audience, Product Inquiries &amp; Newsletter Signups
                     </h3>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    পণ্য কিনতে আগ্রহী ক্রেতাদের ফোন নাম্বার, ইমেইল, ডিল নিউজলেটার সাবস্ক্রিপশন এবং কাস্টমার ইনটেন্ট ডাটাবেজ।
-                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -4022,7 +4908,7 @@ export const AdminDashboard: React.FC = () => {
                       <th className="py-3 px-3 text-right">Direct Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-800 bg-white">
                     {leads
                       .filter((l) => {
                         const matchTab =
@@ -4058,11 +4944,11 @@ export const AdminDashboard: React.FC = () => {
                             : 'bg-emerald-100 text-emerald-800 border-emerald-200';
 
                         return (
-                          <tr key={lead.id} className="hover:bg-gray-50/50 transition-colors">
-                            {/* Lead ID & Status Dropdown */}
-                            <td className="py-3 px-3 align-top">
-                              <div className="space-y-1.5">
-                                <span className="font-mono font-bold text-gray-500 block text-[11px]">
+                          <tr key={lead.id} className="hover:bg-sky-50/30 transition-colors">
+                            {/* Lead ID & Status in 1 Single Line */}
+                            <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-gray-600 text-xs bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md">
                                   {lead.id}
                                 </span>
                                 <select
@@ -4070,7 +4956,7 @@ export const AdminDashboard: React.FC = () => {
                                   onChange={(e) => {
                                     updateLead(lead.id, { status: e.target.value as any });
                                   }}
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border outline-none cursor-pointer ${statusColor}`}
+                                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border outline-none cursor-pointer ${statusColor}`}
                                 >
                                   <option value="NEW">🟢 NEW</option>
                                   <option value="CONTACTED">🟡 CONTACTED</option>
@@ -4080,145 +4966,145 @@ export const AdminDashboard: React.FC = () => {
                               </div>
                             </td>
 
-                            {/* Customer Contact */}
-                            <td className="py-3 px-3 align-top">
-                              <div className="space-y-1">
+                            {/* Customer Contact in 1 Single Line */}
+                            <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                              <div className="flex items-center gap-2 text-[11px]">
                                 {lead.name && (
-                                  <div className="font-bold text-gray-900 text-[12px] flex items-center gap-1">
+                                  <span className="font-extrabold text-gray-900 text-xs flex items-center gap-1">
                                     <span>👤</span>
                                     <span>{lead.name}</span>
-                                  </div>
+                                  </span>
                                 )}
+
                                 {lead.phone ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-mono font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded border border-gray-200 text-[11px]">
-                                      {lead.phone}
-                                    </span>
+                                  <span className="inline-flex items-center gap-1 font-mono font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200">
+                                    <Phone className="w-3 h-3 text-[#0284c7] shrink-0" />
+                                    <span>{lead.phone}</span>
                                     <button
                                       type="button"
                                       onClick={() => {
                                         navigator.clipboard.writeText(lead.phone || '');
                                         showToast(`Copied phone ${lead.phone}!`, 'info');
                                       }}
-                                      className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-800 cursor-pointer"
-                                      title="Copy Phone Number"
+                                      className="p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-700 cursor-pointer transition-colors"
+                                      title="Copy Phone"
                                     >
-                                      <Copy className="w-3 h-3" />
+                                      <Copy className="w-2.5 h-2.5" />
                                     </button>
-                                  </div>
+                                  </span>
                                 ) : (
-                                  <span className="text-gray-400 italic text-[11px]">No phone</span>
+                                  <span className="text-gray-400 italic text-[10px]">No phone</span>
                                 )}
 
-                                {lead.email ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-medium text-gray-700 text-[11px]">{lead.email}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(lead.email || '');
-                                        showToast(`Copied email ${lead.email}!`, 'info');
-                                      }}
-                                      className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-800 cursor-pointer"
-                                      title="Copy Email"
-                                    >
-                                      <Copy className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400 italic text-[11px] block">No email</span>
+                                {lead.email && (
+                                  <>
+                                    <span className="text-gray-300">•</span>
+                                    <span className="inline-flex items-center gap-1 font-medium text-gray-600 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200">
+                                      <Mail className="w-3 h-3 text-gray-400 shrink-0" />
+                                      <span>{lead.email}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(lead.email || '');
+                                          showToast(`Copied email ${lead.email}!`, 'info');
+                                        }}
+                                        className="p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-700 cursor-pointer transition-colors"
+                                        title="Copy Email"
+                                      >
+                                        <Copy className="w-2.5 h-2.5" />
+                                      </button>
+                                    </span>
+                                  </>
                                 )}
                               </div>
                             </td>
 
-                            {/* Source & Product */}
-                            <td className="py-3 px-3 align-top">
-                              <div className="space-y-1">
+                            {/* Source & Product in 1 Single Line */}
+                            <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                              <div className="flex items-center gap-1.5 text-[11px]">
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-[#0284c7] border border-sky-200">
                                   {lead.source}
                                 </span>
                                 {lead.productTitle && (
-                                  <p className="text-[11px] font-semibold text-gray-800 mt-1 max-w-xs flex items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 font-semibold text-gray-800 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md max-w-[200px] truncate" title={lead.productTitle}>
                                     <span className="text-gray-400">📦</span>
-                                    <span>{lead.productTitle}</span>
-                                  </p>
+                                    <span className="truncate">{lead.productTitle}</span>
+                                  </span>
                                 )}
                               </div>
                             </td>
 
-                            {/* Notes */}
-                            <td className="py-3 px-3 align-top max-w-xs">
+                            {/* Notes in 1 Single Line */}
+                            <td className="py-3 px-3.5 align-middle whitespace-nowrap max-w-[240px]">
                               {editingNoteLeadId === lead.id ? (
-                                <div className="space-y-1.5">
-                                  <textarea
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
                                     value={editingNoteText}
                                     onChange={(e) => setEditingNoteText(e.target.value)}
-                                    rows={2}
-                                    className="w-full p-1.5 text-xs rounded border border-sky-300 outline-none resize-none"
+                                    className="p-1 text-xs rounded border border-sky-300 outline-none w-44 font-medium"
                                     placeholder="Write note..."
                                   />
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateLead(lead.id, { note: editingNoteText.trim() || undefined });
-                                        setEditingNoteLeadId(null);
-                                      }}
-                                      className="bg-emerald-600 text-white font-bold text-[10px] px-2 py-1 rounded cursor-pointer hover:bg-emerald-700"
-                                    >
-                                      Save Note
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingNoteLeadId(null)}
-                                      className="text-gray-500 text-[10px] px-2 py-1 rounded hover:bg-gray-100 cursor-pointer"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateLead(lead.id, { note: editingNoteText.trim() || undefined });
+                                      setEditingNoteLeadId(null);
+                                    }}
+                                    className="bg-emerald-600 text-white font-bold text-[10px] px-2 py-1 rounded cursor-pointer hover:bg-emerald-700"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingNoteLeadId(null)}
+                                    className="text-gray-500 text-[10px] px-1.5 py-1 rounded hover:bg-gray-100 cursor-pointer"
+                                  >
+                                    ✕
+                                  </button>
                                 </div>
                               ) : (
-                                <div className="group flex items-start justify-between gap-2">
-                                  <p className="text-gray-600 text-[11px] italic leading-relaxed">
-                                    {lead.note || <span className="text-gray-400 not-italic">No note added yet</span>}
-                                  </p>
+                                <div className="group flex items-center justify-between gap-1.5">
+                                  <span className="text-gray-600 text-[11px] italic truncate max-w-[180px] block" title={lead.note || 'No note added'}>
+                                    {lead.note || <span className="text-gray-400 not-italic">No note added</span>}
+                                  </span>
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setEditingNoteLeadId(lead.id);
                                       setEditingNoteText(lead.note || '');
                                     }}
-                                    className="text-gray-400 hover:text-[#0284c7] text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity shrink-0 cursor-pointer"
+                                    className="text-gray-400 hover:text-[#0284c7] text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity shrink-0 cursor-pointer px-1 py-0.5 rounded hover:bg-sky-50"
                                     title="Edit Note"
                                   >
-                                    ✏️ Note
+                                    ✏️
                                   </button>
                                 </div>
                               )}
                             </td>
 
-                            {/* Date */}
-                            <td className="py-3 px-3 text-gray-500 text-[11px] align-top whitespace-nowrap">
+                            {/* Recorded Date in 1 Single Line */}
+                            <td className="py-3 px-3.5 text-gray-500 text-[11px] align-middle whitespace-nowrap">
                               {lead.createdAt}
                             </td>
 
-                            {/* Actions */}
-                            <td className="py-3 px-3 text-right align-top">
-                              <div className="flex items-center justify-end gap-1.5">
+                            {/* Actions in 1 Single Line */}
+                            <td className="py-3 px-3.5 text-right align-middle whitespace-nowrap">
+                              <div className="inline-flex items-center gap-1.5">
                                 {lead.phone && (
                                   <>
                                     <a
                                       href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${lead.name || ''}! We received your inquiry on QUATRO.`)}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="p-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-emerald-600 transition-colors"
+                                      className="p-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-emerald-600 transition-colors border border-emerald-200"
                                       title="Chat on WhatsApp"
                                     >
                                       <MessageCircle className="w-3.5 h-3.5" />
                                     </a>
                                     <a
                                       href={`tel:${lead.phone.replace(/[^0-9+]/g, '')}`}
-                                      className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-600 transition-colors"
+                                      className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-600 transition-colors border border-blue-200"
                                       title="Call customer directly"
                                     >
                                       <Phone className="w-3.5 h-3.5" />
@@ -4229,7 +5115,7 @@ export const AdminDashboard: React.FC = () => {
                                 {lead.email && (
                                   <a
                                     href={`mailto:${lead.email}?subject=${encodeURIComponent('Special Offer from QUATRO')}`}
-                                    className="p-1.5 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-600 transition-colors"
+                                    className="p-1.5 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-600 transition-colors border border-purple-200"
                                     title="Send Email"
                                   >
                                     <Mail className="w-3.5 h-3.5" />
@@ -4245,7 +5131,11 @@ export const AdminDashboard: React.FC = () => {
                                     }
                                     deleteLead(lead.id);
                                   }}
-                                  className={`p-1.5 rounded-lg ${isSubAgent ? 'text-gray-300 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-red-500 hover:bg-red-50 cursor-pointer transition-colors'}`}
+                                  className={`p-1.5 rounded-lg border transition-colors ${
+                                    isSubAgent
+                                      ? 'text-gray-300 border-gray-100 cursor-not-allowed opacity-50'
+                                      : 'text-gray-400 hover:text-red-600 hover:bg-red-50 border-gray-200 cursor-pointer'
+                                  }`}
                                   title={isSubAgent ? 'Delete (Locked)' : 'Delete lead record'}
                                   disabled={isSubAgent}
                                 >
@@ -4277,9 +5167,6 @@ export const AdminDashboard: React.FC = () => {
                     Sub-Agent Accounts, Passwords &amp; Permissions
                   </h3>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Assign sub-agents with custom emails and passwords to review payments, process orders, and handle live chat.
-                </p>
               </div>
 
               {!isSubAgent && (
@@ -4293,26 +5180,11 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
 
-            {/* Sub-Agent Login Guide Card */}
-            <div className="bg-purple-50/80 p-4 rounded-xl border border-purple-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                  <Key className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-purple-950 text-xs sm:text-sm flex items-center gap-1.5">
-                    <span>Sub-Agent Login Portal Location (সাব-এজেন্ট লগইন কোথায় করবেন?)</span>
-                  </h4>
-                  <p className="text-[11px] text-purple-800 mt-0.5 leading-relaxed">
-                    Staff members can log in using their assigned Email &amp; Password through:
-                    <br className="hidden sm:inline" />
-                    1. <strong>Top Navigation Bar</strong> &rarr; Click &ldquo;🛡️ Sub-Agent Login&rdquo;
-                    <br className="hidden sm:inline" />
-                    2. <strong>Mobile Drawer Menu</strong> &rarr; &ldquo;Sub-Agent Staff Login&rdquo;
-                    <br className="hidden sm:inline" />
-                    3. <strong>Auth Modal</strong> &rarr; &ldquo;Sub-Agent&rdquo; tab
-                  </p>
-                </div>
+            {/* Sub-Agent Portal Action Strip */}
+            <div className="bg-purple-50/70 p-3 rounded-xl border border-purple-200 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <Key className="w-4 h-4 text-purple-600" />
+                <span className="font-bold text-purple-950">Sub-Agent Staff Portal</span>
               </div>
               <button
                 type="button"
@@ -4320,10 +5192,10 @@ export const AdminDashboard: React.FC = () => {
                   setAuthModalTab('subagent');
                   setIsAuthModalOpen(true);
                 }}
-                className="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-extrabold px-3 py-2 rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
+                className="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-2xs transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Open Sub-Agent Login Page →</span>
+                <span>Open Login Modal</span>
               </button>
             </div>
 
@@ -4594,17 +5466,14 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'livechat' && (
           <div className="space-y-4">
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2">
                 <span className="bg-emerald-100 text-emerald-800 text-xs font-black px-2 py-0.5 rounded">
                   Support CRM
                 </span>
                 <h3 className="font-extrabold text-base text-gray-900">
-                  Customer Live Chat &amp; Help Desk Inquiries
+                  Customer Live Chat &amp; Inquiries
                 </h3>
               </div>
-              <p className="text-xs text-gray-500">
-                Manage and reply to customer inquiries, delivery questions, and bKash TrxID verification chats in real time.
-              </p>
             </div>
 
             <div className="space-y-3">
@@ -4920,9 +5789,6 @@ export const AdminDashboard: React.FC = () => {
                     </button>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500">
-                  Instant sync: Displays as &ldquo;{editSoldCount} sold&rdquo; in product cards &amp; flash sale meter.
-                </p>
               </div>
 
               {/* Review Count & Flash Sale checkbox */}
