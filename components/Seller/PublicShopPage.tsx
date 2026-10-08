@@ -38,26 +38,39 @@ export const PublicShopPage: React.FC<{
   const [shopSearch, setShopSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
-  // Find shop by slug
+  // Find shop by slug or ID
   const shop = useMemo(() => {
-    return (
-      sellers.find((s) => s.slug === shopSlug || s.id === shopSlug) || {
-        id: 'seller-apex-01',
-        shopName: 'Apex Tech & Gadget Center',
-        slug: 'apex-gadget-store',
-        logo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80',
-        banner: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80',
-        description:
-          'Official Apex Tech & Premium Gadget Store on QUATRO. 100% Genuine Electronics, Fast Express Shipping across Bangladesh & 7-Day Replacement Guarantee.',
-        phone: '01712998877',
-        email: 'seller@apexbd.com',
-        shopAddress: 'Shop #304, Level 4, BCS Computer City, IDB Bhaban, Agargaon, Dhaka-1207',
-        status: 'Approved' as const,
-        rating: 4.9,
-        followerCount: 12840,
-        joinedDate: '2024-03-15'
-      }
+    const decodedSlug = decodeURIComponent(shopSlug || '').toLowerCase();
+    const found = sellers.find(
+      (s) =>
+        (s.slug && s.slug.toLowerCase() === decodedSlug) ||
+        (s.id && s.id.toLowerCase() === decodedSlug) ||
+        (s.shopName && s.shopName.toLowerCase() === decodedSlug)
     );
+
+    if (found) return found;
+
+    // Clean real dynamic merchant representation
+    const formattedTitle = decodedSlug
+      .split(/[-_]+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+
+    return {
+      id: shopSlug || 'official-store',
+      shopName: formattedTitle || 'Official Store',
+      slug: shopSlug || 'official-store',
+      logo: '',
+      banner: '',
+      description: 'Official Verified Merchant Store on QUATRO.',
+      phone: '',
+      email: '',
+      shopAddress: 'Dhaka, Bangladesh',
+      status: 'Approved' as const,
+      rating: 5.0,
+      followerCount: 0,
+      joinedDate: new Date().toISOString().split('T')[0]
+    };
   }, [sellers, shopSlug]);
 
   const isFollowing = isFollowingShop(shop.id);

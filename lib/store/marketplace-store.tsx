@@ -92,7 +92,9 @@ import {
   deleteCategoryFromFirestore,
   saveSettingsToFirestore,
   saveCouponToFirestore,
-  deleteCouponFromFirestore
+  deleteCouponFromFirestore,
+  saveSellerToFirestore,
+  saveAffiliateToFirestore
 } from '@/lib/firebase/services';
 import { db } from '@/lib/firebase/config';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
@@ -410,7 +412,7 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Seller Center Module States
   const [sellers, setSellers] = useState<Seller[]>(DEFAULT_SELLERS);
-  const [currentSeller, setCurrentSeller] = useState<Seller | null>(DEFAULT_SELLERS[0]);
+  const [currentSeller, setCurrentSeller] = useState<Seller | null>(null);
   const [sellerWallets, setSellerWallets] = useState<Record<string, SellerWallet>>(DEFAULT_WALLETS);
   const [sellerTransactions, setSellerTransactions] = useState<SellerTransaction[]>(DEFAULT_TRANSACTIONS);
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>(DEFAULT_WITHDRAWALS);
@@ -420,11 +422,11 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [sponsoredCampaigns, setSponsoredCampaigns] = useState<SponsoredAdCampaign[]>(DEFAULT_SPONSORED_CAMPAIGNS);
   const [depositRequests, setDepositRequests] = useState<SellerDepositRequest[]>(DEFAULT_DEPOSIT_REQUESTS);
   const [adminAdSettings, setAdminAdSettings] = useState<AdminAdSettings>(DEFAULT_ADMIN_AD_SETTINGS);
-  const [shopFollowers, setShopFollowers] = useState<string[]>(['seller-apex-01']);
+  const [shopFollowers, setShopFollowers] = useState<string[]>([]);
 
   // Affiliate System States
   const [affiliates, setAffiliates] = useState<Affiliate[]>(DEFAULT_AFFILIATES);
-  const [currentAffiliate, setCurrentAffiliate] = useState<Affiliate | null>(DEFAULT_AFFILIATES[0]);
+  const [currentAffiliate, setCurrentAffiliate] = useState<Affiliate | null>(null);
   const [affiliateLinks, setAffiliateLinks] = useState<AffiliateLink[]>(DEFAULT_AFFILIATE_LINKS);
   const [affiliateClicks, setAffiliateClicks] = useState<AffiliateClick[]>(DEFAULT_AFFILIATE_CLICKS);
   const [affiliateCommissions, setAffiliateCommissions] = useState<AffiliateCommission[]>(DEFAULT_AFFILIATE_COMMISSIONS);
@@ -1172,7 +1174,12 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       payoutAccount: data.payoutAccount,
       status: 'Pending',
       createdAt: new Date().toISOString()
-    }).catch((err) => console.warn('Sync seller to Firestore notice:', err));
+    }).catch((err) => console.warn('Sync seller to users collection notice:', err));
+
+    // Save seller into dedicated 'sellers' directory in Firestore
+    saveSellerToFirestore(newSeller).catch((err) =>
+      console.warn('Save seller to sellers collection notice:', err)
+    );
 
     setSellerWallets((prev) => ({
       ...prev,
@@ -2985,6 +2992,25 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setUser(affiliateUser);
     localStorage.setItem('quatro_current_affiliate', JSON.stringify(newAffiliate));
     localStorage.setItem('bazaarbd_user', JSON.stringify(affiliateUser));
+
+    // Persist Affiliate to Firestore 'users' and 'affiliates' collections
+    syncUserToFirestore({
+      id: newAffiliate.userId,
+      name: newAffiliate.name,
+      email: newAffiliate.email,
+      phone: newAffiliate.phone,
+      role: 'AFFILIATE',
+      customerId: newAffiliate.code,
+      payoutMethod: newAffiliate.payoutMethod,
+      payoutAccount: newAffiliate.payoutAccount,
+      status: 'Active',
+      createdAt: new Date().toISOString()
+    }).catch((err) => console.warn('Sync affiliate to users collection notice:', err));
+
+    saveAffiliateToFirestore(newAffiliate).catch((err) =>
+      console.warn('Save affiliate to affiliates collection notice:', err)
+    );
+
     showToast(`Welcome! Your affiliate code is ${newAffiliate.code}`, 'success');
     return newAffiliate;
   };
@@ -3052,6 +3078,24 @@ export const MarketplaceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setCurrentAffiliate(newAff);
     setUser({ ...user, role: 'AFFILIATE' });
     localStorage.setItem('quatro_current_affiliate', JSON.stringify(newAff));
+
+    // Persist upgraded affiliate to Firestore
+    syncUserToFirestore({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      role: 'AFFILIATE',
+      customerId: code,
+      payoutMethod,
+      payoutAccount,
+      status: 'Active',
+      updatedAt: new Date().toISOString()
+    }).catch((err) => console.warn('Sync upgraded affiliate to users notice:', err));
+
+    saveAffiliateToFirestore(newAff).catch((err) =>
+      console.warn('Save upgraded affiliate to affiliates notice:', err)
+    );
     showToast(`Account upgraded! You are now an official QUATRO Affiliate (${code})`, 'success');
     return newAff;
   };
