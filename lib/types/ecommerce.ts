@@ -434,7 +434,6 @@ export interface Seller {
   userId: string;
   shopName: string;
   slug: string;
-  passwordHash?: string; // Role-specific seller password hash
   logo?: string;
   banner?: string;
   description?: string;
@@ -606,7 +605,6 @@ export interface Affiliate {
   userId: string;
   name: string;
   email: string;
-  passwordHash?: string; // Role-specific affiliate password hash
   phone: string;
   code: string; // e.g. "AFF-DEMO2026"
   status: AffiliateStatus;

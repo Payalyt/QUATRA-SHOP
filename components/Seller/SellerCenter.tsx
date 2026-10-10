@@ -114,22 +114,22 @@ export const SellerCenter: React.FC<{
     submitSellerVerification
   } = useMarketplace();
 
-  // Active Seller Object - Clean real data (No mock/dummy items or fake images)
-  const seller: Seller = currentSeller || sellers[0] || {
-    id: user ? `seller-${user.id}` : 'seller-new',
-    shopName: user?.shopName || (user?.name ? `${user.name}'s Shop` : 'My Merchant Store'),
-    slug: user?.shopName ? user.shopName.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'merchant-store',
-    logo: user?.avatar || '',
-    banner: '',
-    status: (user?.role === 'SELLER' ? 'Approved' : 'Pending') as const,
-    phone: user?.phone || '',
-    email: user?.email || '',
-    shopAddress: user?.address || '',
+  // Active Seller Object
+  const seller = currentSeller || sellers[0] || {
+    id: 'seller-apex-01',
+    shopName: 'Apex Tech & Gadget Center',
+    slug: 'apex-gadget-store',
+    logo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80',
+    banner: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80',
+    status: 'Approved' as const,
+    phone: '01712998877',
+    email: 'seller@apexbd.com',
+    shopAddress: 'Shop #304, Level 4, IDB Bhaban, Dhaka',
     payoutMethod: 'bKash' as const,
-    payoutAccount: user?.phone || '',
-    rating: 5.0,
-    followerCount: 0,
-    joinedDate: new Date().toISOString().split('T')[0]
+    payoutAccount: '01712998877',
+    rating: 4.9,
+    followerCount: 12840,
+    joinedDate: '2024-03-15'
   };
 
   const isBn = language === 'bn';

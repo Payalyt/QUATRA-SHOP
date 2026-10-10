@@ -10,8 +10,8 @@ export default function SellerLoginPage() {
   const { sellerLogin, showToast } = useMarketplace();
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('seller@apexbd.com');
+  const [password, setPassword] = useState('seller123');
   const [error, setError] = useState('');
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 

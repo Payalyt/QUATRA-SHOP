@@ -38,96 +38,41 @@ export const PublicShopPage: React.FC<{
   const [shopSearch, setShopSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
-  // Find shop dynamically by slug, ID, or brand
-  const cleanSlug = useMemo(() => {
-    return decodeURIComponent(shopSlug || '').trim().toLowerCase();
-  }, [shopSlug]);
-
+  // Find shop by slug
   const shop = useMemo(() => {
-    // 1. Direct match in registered sellers
-    const matchedSeller = sellers.find(
-      (s) =>
-        (s.slug && s.slug.toLowerCase() === cleanSlug) ||
-        (s.id && s.id.toLowerCase() === cleanSlug) ||
-        (s.shopName && s.shopName.toLowerCase() === cleanSlug)
+    return (
+      sellers.find((s) => s.slug === shopSlug || s.id === shopSlug) || {
+        id: 'seller-apex-01',
+        shopName: 'Apex Tech & Gadget Center',
+        slug: 'apex-gadget-store',
+        logo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80',
+        banner: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80',
+        description:
+          'Official Apex Tech & Premium Gadget Store on QUATRO. 100% Genuine Electronics, Fast Express Shipping across Bangladesh & 7-Day Replacement Guarantee.',
+        phone: '01712998877',
+        email: 'seller@apexbd.com',
+        shopAddress: 'Shop #304, Level 4, BCS Computer City, IDB Bhaban, Agargaon, Dhaka-1207',
+        status: 'Approved' as const,
+        rating: 4.9,
+        followerCount: 12840,
+        joinedDate: '2024-03-15'
+      }
     );
-    if (matchedSeller) return matchedSeller;
-
-    // 2. Match by brand name among all products
-    const matchingProduct = products.find(
-      (p) =>
-        (p.sellerId && p.sellerId.toLowerCase() === cleanSlug) ||
-        (p.brand && p.brand.toLowerCase() === cleanSlug) ||
-        (p.brand && p.brand.toLowerCase().replace(/[^a-z0-9]+/g, '-') === cleanSlug)
-    );
-
-    const brandName = matchingProduct?.brand || cleanSlug
-      .split(/[-_]+/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ') || 'Official Merchant';
-
-    return {
-      id: matchingProduct?.sellerId || `seller-${cleanSlug}`,
-      sellerIdNumber: '81049281',
-      userId: `usr-${cleanSlug}`,
-      shopName: `${brandName} Official Store`,
-      slug: cleanSlug || 'store',
-      logo: '',
-      banner: '',
-      description: `Official verified store for ${brandName} products on QUATRO. 100% genuine products with fast delivery & 7-day warranty.`,
-      phone: '01700000000',
-      email: `support@${cleanSlug}.bd`,
-      shopAddress: 'Dhaka, Bangladesh',
-      status: 'Approved' as const,
-      payoutMethod: 'bKash' as const,
-      payoutAccount: '01700000000',
-      rating: 4.9,
-      followerCount: 380,
-      joinedDate: '2025-01-01',
-      isVerified: true
-    };
-  }, [sellers, cleanSlug, products]);
+  }, [sellers, shopSlug]);
 
   const isFollowing = isFollowingShop(shop.id);
 
-  // Filter shop products with precise sellerId / brand matching
+  // Filter shop products
   const shopProducts = useMemo(() => {
-    const matched = products.filter((p) => {
-      // Check sellerId match
-      const matchesSeller = Boolean(
-        p.sellerId &&
-        (p.sellerId === shop.id ||
-         p.sellerId === shop.slug ||
-         p.sellerId.toLowerCase() === cleanSlug)
-      );
-
-      // Check brand match
-      const cleanBrand = p.brand ? p.brand.toLowerCase() : '';
-      const cleanShopName = shop.shopName.toLowerCase();
-      const matchesBrand = cleanBrand && (
-        cleanShopName.includes(cleanBrand) ||
-        cleanBrand.includes(cleanSlug) ||
-        cleanBrand.replace(/[^a-z0-9]+/g, '-') === cleanSlug
-      );
-
-      const isOwner = matchesSeller || matchesBrand;
-
+    return products.filter((p) => {
+      const isOwner = !p.sellerId || p.sellerId === shop.id;
       const matchesSearch =
-        !shopSearch ||
         p.title.toLowerCase().includes(shopSearch.toLowerCase()) ||
         p.brand.toLowerCase().includes(shopSearch.toLowerCase());
       const matchesCat = !selectedCat || p.categoryId === selectedCat;
-
       return isOwner && matchesSearch && matchesCat;
     });
-
-    // If the seller is new or specific brand had no products, fallback to top products from marketplace
-    if (matched.length === 0 && !shopSearch && !selectedCat) {
-      return products.slice(0, 8);
-    }
-
-    return matched;
-  }, [products, shop.id, shop.slug, shop.shopName, cleanSlug, shopSearch, selectedCat]);
+  }, [products, shop.id, shopSearch, selectedCat]);
 
   return (
     <div className="min-h-screen bg-[#F4F5F7] font-sans pb-16">

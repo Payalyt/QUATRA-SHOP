@@ -97,8 +97,41 @@ export const UnifiedUserManager: React.FC = () => {
         }
       });
 
-      // Clean state: Only real users from Firestore or active sessions
-      // No hardcoded mock/dummy users
+      // Ensure seed records exist if completely empty
+      if (merged.length === 0) {
+        merged = [
+          {
+            id: 'usr-cust-01',
+            customerId: 'QA-48291048',
+            name: 'Tanvir Ahmed',
+            email: 'tanvir@gmail.com',
+            phone: '01711223344',
+            role: 'CUSTOMER',
+            status: 'Active',
+            shippingAddress: 'House 14, Road 5, Dhanmondi, Dhaka',
+            ordersCount: 5,
+            totalSpent: 12450,
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'usr-seller-01',
+            customerId: 'QA-SL-81049281',
+            sellerIdNumber: 'QA-SL-81049281',
+            name: 'Rahim Chowdhury',
+            email: 'apex.seller@quatro.com',
+            phone: '01912345678',
+            role: 'SELLER',
+            shopName: 'Apex Footwear BD',
+            shopAddress: 'Bata Signal, Elephant Road, Dhaka',
+            nidTradeLicense: 'TR-10293847-DHAKA',
+            payoutMethod: 'bKash',
+            payoutAccount: '01912345678',
+            status: 'Approved',
+            ordersCount: 42,
+            createdAt: new Date().toISOString()
+          }
+        ];
+      }
 
       // Guarantee each user has their distinct 8-digit numeric ID (no text prefix)
       merged = merged.map((u, idx) => {

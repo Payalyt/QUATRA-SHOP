@@ -293,13 +293,13 @@ export const CheckoutModal: React.FC = () => {
                   <span>1. {t('shippingAddress')} (Bangladesh)</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="font-bold text-gray-700 block mb-1.5">
-                      {language === 'bn' ? 'আপনার পূর্ণ নাম' : 'Full Name'} *
+                    <label className="font-semibold text-gray-700 block mb-1">
+                      Full Name (আপনার নাম) *
                     </label>
                     <div className="relative">
-                      <User className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${fieldErrors.fullName ? 'text-red-500' : 'text-gray-400'}`} />
+                      <User className={`w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 ${fieldErrors.fullName ? 'text-red-500' : 'text-gray-400'}`} />
                       <input
                         type="text"
                         value={fullName}
@@ -307,9 +307,9 @@ export const CheckoutModal: React.FC = () => {
                           setFullName(e.target.value);
                           if (fieldErrors.fullName) setFieldErrors((prev) => ({ ...prev, fullName: undefined }));
                         }}
-                        placeholder={language === 'bn' ? 'আপনার পূর্ণ নাম লিখুন' : 'Enter your full name'}
-                        className={`w-full h-11 pl-9 pr-3 rounded-xl border outline-none font-bold text-gray-800 text-xs sm:text-sm transition-all ${
-                          fieldErrors.fullName ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-2 ring-red-200' : 'border-gray-300 focus:border-[#0284c7] focus:ring-2 focus:ring-sky-100'
+                        placeholder="আপনার পূর্ণ নাম লিখুন"
+                        className={`w-full py-2 pl-8 pr-2.5 rounded border outline-none font-bold text-gray-800 transition-colors ${
+                          fieldErrors.fullName ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
                         }`}
                         required
                       />
@@ -322,11 +322,11 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-bold text-gray-700 block mb-1.5">
-                      {language === 'bn' ? 'মোবাইল নম্বর' : 'Phone Number'} *
+                    <label className="font-semibold text-gray-700 block mb-1">
+                      Phone Number (মোবাইল নম্বর) *
                     </label>
                     <div className="relative">
-                      <Phone className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${fieldErrors.phone ? 'text-red-500' : 'text-gray-400'}`} />
+                      <Phone className={`w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 ${fieldErrors.phone ? 'text-red-500' : 'text-gray-400'}`} />
                       <input
                         type="tel"
                         value={phone}
@@ -335,8 +335,8 @@ export const CheckoutModal: React.FC = () => {
                           if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: undefined }));
                         }}
                         placeholder="017XXXXXXXX"
-                        className={`w-full h-11 pl-9 pr-3 rounded-xl border outline-none font-bold text-gray-800 text-xs sm:text-sm transition-all ${
-                          fieldErrors.phone ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-2 ring-red-200' : 'border-gray-300 focus:border-[#0284c7] focus:ring-2 focus:ring-sky-100'
+                        className={`w-full py-2 pl-8 pr-2.5 rounded border outline-none font-bold text-gray-800 transition-colors ${
+                          fieldErrors.phone ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
                         }`}
                         required
                       />
@@ -349,11 +349,11 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-bold text-gray-700 block mb-1.5">{language === 'bn' ? 'বিভাগ' : 'Division'} *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">Division (বিভাগ) *</label>
                     <select
                       value={division}
                       onChange={(e) => handleDivisionChange(e.target.value)}
-                      className="w-full h-11 px-3 rounded-xl border border-gray-300 focus:border-[#0284c7] focus:ring-2 focus:ring-sky-100 outline-none bg-white font-bold text-gray-800 text-xs sm:text-sm"
+                      className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none bg-white font-bold text-gray-800"
                     >
                       {BANGLADESH_DIVISIONS.map((d) => (
                         <option key={d.name} value={d.name}>
@@ -364,11 +364,11 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-bold text-gray-700 block mb-1.5">{language === 'bn' ? 'জেলা / শহর' : 'District / City'} *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">District / City (জেলা) *</label>
                     <select
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
-                      className="w-full h-11 px-3 rounded-xl border border-gray-300 focus:border-[#0284c7] focus:ring-2 focus:ring-sky-100 outline-none bg-white font-bold text-gray-800 text-xs sm:text-sm"
+                      className="w-full p-2 rounded border border-gray-300 focus:border-[#0284c7] outline-none bg-white font-bold text-gray-800"
                     >
                       {districts.map((d) => (
                         <option key={d} value={d}>
@@ -379,7 +379,7 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-bold text-gray-700 block mb-1.5">{language === 'bn' ? 'থানা / উপজেলা' : 'Thana / Upazila'} *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">Thana / Upazila (থানা / উপজেলা) *</label>
                     <input
                       type="text"
                       value={thanaCity}
@@ -387,9 +387,9 @@ export const CheckoutModal: React.FC = () => {
                         setThanaCity(e.target.value);
                         if (fieldErrors.thanaCity) setFieldErrors((prev) => ({ ...prev, thanaCity: undefined }));
                       }}
-                      placeholder={language === 'bn' ? 'থানা / উপজেলা লিখুন' : 'Enter Thana / Upazila'}
-                      className={`w-full h-11 px-3 rounded-xl border outline-none font-bold text-gray-800 text-xs sm:text-sm transition-all ${
-                        fieldErrors.thanaCity ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-2 ring-red-200' : 'border-gray-300 focus:border-[#0284c7] focus:ring-2 focus:ring-sky-100'
+                      placeholder="থানা / উপজেলা লিখুন"
+                      className={`w-full p-2 rounded border outline-none font-semibold text-gray-800 transition-colors ${
+                        fieldErrors.thanaCity ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
                       }`}
                       required
                     />
@@ -401,19 +401,19 @@ export const CheckoutModal: React.FC = () => {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="font-bold text-gray-700 block mb-1.5">{language === 'bn' ? 'বিস্তারিত ডেলিভারি ঠিকানা' : 'Detailed Street Address'} *</label>
+                    <label className="font-semibold text-gray-700 block mb-1">Detailed Street Address (বিস্তারিত ঠিকানা) *</label>
                     <div className="relative">
-                      <Home className={`w-4 h-4 absolute left-3 top-3.5 ${fieldErrors.addressLine ? 'text-red-500' : 'text-gray-400'}`} />
+                      <Home className={`w-3.5 h-3.5 absolute left-2.5 top-3 ${fieldErrors.addressLine ? 'text-red-500' : 'text-gray-400'}`} />
                       <textarea
-                        rows={2}
+                        rows={1}
                         value={addressLine}
                         onChange={(e) => {
                           setAddressLine(e.target.value);
                           if (fieldErrors.addressLine) setFieldErrors((prev) => ({ ...prev, addressLine: undefined }));
                         }}
-                        placeholder={language === 'bn' ? 'বাসা নং, রোড নং, এলাকা / গ্রাম ইত্যাদি' : 'House no, Road no, Area / Village details'}
-                        className={`w-full py-2.5 pl-9 pr-3 rounded-xl border outline-none resize-none font-bold text-gray-800 text-xs sm:text-sm transition-all ${
-                          fieldErrors.addressLine ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-2 ring-red-200' : 'border-gray-300 focus:border-[#0284c7] focus:ring-2 focus:ring-sky-100'
+                        placeholder="বাসা নং, রোড নং, এলাকা / গ্রাম"
+                        className={`w-full py-2 pl-8 pr-2.5 rounded border outline-none resize-none font-semibold text-gray-800 transition-colors ${
+                          fieldErrors.addressLine ? 'border-red-500 bg-red-50/20 focus:border-red-600 ring-1 ring-red-400' : 'border-gray-300 focus:border-[#0284c7]'
                         }`}
                         required
                       />
@@ -497,8 +497,8 @@ export const CheckoutModal: React.FC = () => {
                   <span className="text-[10px] text-gray-400 font-semibold bg-gray-50 px-2 py-0.5 border border-gray-150 rounded">Secure Checkout</span>
                 </div>
 
-                {/* Responsive Payment Gateway Grid: 2 columns on mobile, 4 columns on desktop */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-2 mb-3.5">
+                {/* Inline Payment Gateway Logos List in One Line */}
+                <div className="grid grid-cols-4 gap-2 mb-3.5">
                   {paymentOptions.map((opt) => {
                     const isSelected = paymentMethod === opt.id;
                     return (
@@ -509,9 +509,9 @@ export const CheckoutModal: React.FC = () => {
                           setPaymentMethod(opt.id);
                           setFieldErrors((prev) => ({ ...prev, general: undefined }));
                         }}
-                        className={`p-2.5 sm:p-2 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer min-h-[60px] active:scale-97 ${
+                        className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer active:scale-97 ${
                           isSelected
-                            ? 'border-[#0284c7] bg-sky-50/30 ring-2 ring-[#0284c7]/80 shadow-xs'
+                            ? 'border-[#0284c7] bg-sky-50/25 ring-1 ring-[#0284c7] shadow-xs'
                             : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                       >
@@ -535,10 +535,10 @@ export const CheckoutModal: React.FC = () => {
                             </span>
                           </div>
                         )}
-                        <span className={`text-[10px] sm:text-[9.5px] font-bold tracking-tight leading-tight text-center px-1 truncate w-full ${
+                        <span className={`text-[8.5px] font-extrabold tracking-tight leading-tight text-center px-0.5 truncate w-full ${
                           isSelected ? 'text-[#0284c7]' : 'text-gray-700'
                         }`}>
-                          {opt.id === 'COD' ? (language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery') : opt.name}
+                          {opt.id === 'COD' ? 'Cash On Delivery' : opt.name}
                         </span>
                       </button>
                     );
@@ -815,26 +815,14 @@ export const CheckoutModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Confirm & Place Order CTA - Mobile optimized & prominent */}
+              {/* Confirm & Place Order CTA */}
               <button
                 onClick={validateAndProceed}
                 disabled={isSubmitting || cart.length === 0}
-                className="w-full mt-5 min-h-[50px] bg-[#0284c7] hover:bg-[#0369a1] text-white font-black text-sm sm:text-base py-3.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-98 flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full mt-5 bg-[#0284c7] hover:bg-[#0369a1] text-white font-extrabold text-sm py-3 px-4 rounded-md shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:bg-gray-300"
               >
-                {isSubmitting ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>{language === 'bn' ? 'অর্ডার প্রসেস হচ্ছে...' : 'Processing Order...'}</span>
-                  </span>
-                ) : (
-                  <>
-                    <span>{language === 'bn' ? 'অর্ডার কনফার্ম করুন' : 'Confirm & Place Order'}</span>
-                    <span className="bg-white/20 px-2.5 py-0.5 rounded-lg text-xs font-black tabular-nums">
-                      {formatPrice(totalAmount)}
-                    </span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
+                <span>{t('placeOrder')}</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>

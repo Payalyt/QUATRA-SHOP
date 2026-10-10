@@ -252,7 +252,7 @@ export const AuthModal: React.FC = () => {
         return;
       }
 
-      // 3. Customer Firebase login (Strictly role: CUSTOMER to prevent unwanted seller/affiliate crossover)
+      // 3. Regular Customer / Seller Firebase login
       const result = await handleFirebaseLogin({
         email: cleanEmail,
         password: password.trim(),
@@ -265,14 +265,15 @@ export const AuthModal: React.FC = () => {
         return;
       }
 
-      const customerId = result.profile?.customerId || generateCustomerQAId();
+      const isSeller = cleanEmail.includes('seller') || result.profile?.role === 'SELLER';
+      const customerId = result.profile?.customerId || (isSeller ? generateSellerQAId() : generateCustomerQAId());
       const loggedUser = {
         id: result.user?.uid || `usr-${Date.now()}`,
         customerId: customerId,
-        name: result.profile?.name || name || (cleanEmail.split('@')[0] ? cleanEmail.split('@')[0] : 'Customer'),
+        name: result.profile?.name || name || (cleanEmail.split('@')[0] ? cleanEmail.split('@')[0] : 'User Account'),
         email: cleanEmail,
         phone: result.profile?.phone || phone || '01712345678',
-        role: 'CUSTOMER' as const
+        role: (result.profile?.role || (isSeller ? 'SELLER' : 'CUSTOMER')) as 'SELLER' | 'CUSTOMER' | 'AFFILIATE' | 'ADMIN'
       };
 
       setCurrentSubAgent(null);

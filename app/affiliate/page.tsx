@@ -664,19 +664,18 @@ export default function AffiliateLandingPage() {
                     required
                     value={loginEmailOrCode}
                     onChange={(e) => setLoginEmailOrCode(e.target.value)}
-                    placeholder="you@gmail.com বা আপনার রেফারেল কোড"
+                    placeholder="affiliate.demo@gmail.com বা AFF-DEMO2026"
                     className="w-full p-2.5 border border-gray-300 rounded-xl outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
 
                 <div>
-                  <label className="font-bold text-gray-700 block mb-1">অ্যাফিলিয়েট পাসওয়ার্ড *</label>
+                  <label className="font-bold text-gray-700 block mb-1">পাসওয়ার্ড</label>
                   <input
                     type="password"
-                    required
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="আপনার অ্যাফিলিয়েট পাসওয়ার্ড লিখুন"
+                    placeholder="আপনার পাসওয়ার্ড লিখুন"
                     className="w-full p-2.5 border border-gray-300 rounded-xl outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>

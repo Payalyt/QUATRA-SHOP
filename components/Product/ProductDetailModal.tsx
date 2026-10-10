@@ -111,58 +111,6 @@ export const ProductDetailModal: React.FC = () => {
   const [questionText, setQuestionText] = useState('');
   const [isSubmittingQna, setIsSubmittingQna] = useState(false);
 
-  // Seller info - Dynamic & exact resolution (Must be called unconditionally before early return)
-  const sellerObj = React.useMemo(() => {
-    if (!activeProductModal) return null;
-    const prod = activeProductModal;
-
-    if (prod.sellerId) {
-      const found = sellers.find(
-        (s) =>
-          s.id === prod.sellerId ||
-          s.slug === prod.sellerId ||
-          (s.shopName && s.shopName.toLowerCase() === prod.sellerId?.toLowerCase())
-      );
-      if (found) return found;
-    }
-
-    if (prod.brand) {
-      const foundByBrand = sellers.find(
-        (s) =>
-          (s.shopName && s.shopName.toLowerCase() === prod.brand.toLowerCase()) ||
-          (s.slug && s.slug.toLowerCase() === prod.brand.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
-      );
-      if (foundByBrand) return foundByBrand;
-    }
-
-    const brandName = prod.brand || 'Official Merchant';
-    const storeSlug = (prod.sellerId || brandName)
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'store';
-
-    return {
-      id: prod.sellerId || `seller-${storeSlug}`,
-      sellerIdNumber: '81049281',
-      userId: `usr-${storeSlug}`,
-      shopName: `${brandName} Official Store`,
-      slug: storeSlug,
-      logo: '',
-      banner: '',
-      description: `Official verified store for ${brandName} products on QUATRO. 100% genuine products with fast delivery & 7-day warranty.`,
-      phone: '01700000000',
-      email: `support@${storeSlug}.bd`,
-      shopAddress: 'Dhaka, Bangladesh',
-      status: 'Approved' as const,
-      payoutMethod: 'bKash' as const,
-      payoutAccount: '01700000000',
-      rating: 4.9,
-      followerCount: 240,
-      joinedDate: '2025-01-01',
-      isVerified: true
-    };
-  }, [activeProductModal, sellers]);
-
   if (!activeProductModal) return null;
 
   const product = activeProductModal;
@@ -173,6 +121,8 @@ export const ProductDetailModal: React.FC = () => {
   const activeVariant = product.variants?.find((v) => v.id === selectedVariantId) || product.variants?.[0];
   const effectivePrice = product.price + (activeVariant?.priceDiff || 0);
 
+  // Seller info
+  const sellerObj = sellers.find((s) => s.id === product.sellerId || s.slug === product.sellerId) || sellers[0];
   const isShopFollowed = sellerObj ? isFollowingShop(sellerObj.id) : false;
 
   // Related products from same category
@@ -669,14 +619,13 @@ export const ProductDetailModal: React.FC = () => {
 
                       <button
                         onClick={() => {
-                          const targetSlug = sellerObj.slug || sellerObj.id || 'store';
                           setActiveProductModal(null);
-                          router.push(`/shop/${encodeURIComponent(targetSlug)}`);
+                          router.push(`/shop/${sellerObj.slug}`);
                         }}
-                        className="text-xs bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold px-3 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                        className="text-xs bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold px-3 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer flex items-center gap-1 active:scale-95"
                       >
                         <Store className="w-3.5 h-3.5" />
-                        <span>{language === 'bn' ? 'স্টোরে যান' : 'Visit Store'}</span>
+                        <span>Visit</span>
                       </button>
                     </div>
                   </div>
